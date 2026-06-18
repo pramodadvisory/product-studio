@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from "react";
 import {
-  closestCenter,
+  closestCorners,
   DndContext,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
@@ -22,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +33,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Archive,
   CalendarRange,
   Flag,
   GripVertical,
@@ -38,7 +41,12 @@ import {
   Plus,
   Target,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+const BACKLOG_SPRINT_ID = "backlog";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 type Goal = {
   id: string;
   title: string;
@@ -59,6 +67,11 @@ type Sprint = {
 type StoryItem = {
   id: string;
   text: string;
+  status?: "todo" | "in-progress" | "done" | "blocked";
+  priority?: "low" | "medium" | "high";
+  storyPoints?: number;
+  storyKey?: string;
+  assignee?: string;
 };
 
 type StoriesByCell = Record<string, StoryItem[]>;
@@ -67,6 +80,7 @@ function cellKey(sprintId: string, featureId: string) {
   return `${sprintId}::${featureId}`;
 }
 
+// ─── Seed Data ────────────────────────────────────────────────────────────────
 const initialGoals: Goal[] = [
   { id: "goal-1", title: "Acquire and activate users faster" },
   { id: "goal-2", title: "Improve planning confidence" },
@@ -90,22 +104,136 @@ const initialSprints: Sprint[] = [
 
 const initialStoriesByCell: StoriesByCell = {
   [cellKey("sprint-1", "feature-1")]: [
-    { id: "story-1", text: "As a PM, I can create a workspace in under 2 minutes" },
+    {
+      id: "story-1",
+      text: "As a PM, I can create a workspace in under 2 minutes",
+      status: "done",
+      priority: "high",
+      storyPoints: 3,
+      storyKey: "AS-1",
+      assignee: "Alice",
+    },
   ],
   [cellKey("sprint-1", "feature-2")]: [
-    { id: "story-2", text: "As a new user, I can complete onboarding with contextual tips" },
+    {
+      id: "story-2",
+      text: "As a new user, I can complete onboarding with contextual tips",
+      status: "in-progress",
+      priority: "high",
+      storyPoints: 5,
+      storyKey: "AS-2",
+      assignee: "Bob",
+    },
   ],
   [cellKey("sprint-2", "feature-3")]: [
-    { id: "story-3", text: "As a team, we can prioritize stories with drag and drop" },
+    {
+      id: "story-3",
+      text: "As a team, we can prioritize stories with drag and drop",
+      status: "in-progress",
+      priority: "medium",
+      storyPoints: 8,
+      storyKey: "AS-3",
+    },
   ],
   [cellKey("sprint-3", "feature-4")]: [
-    { id: "story-4", text: "As a PM, I can see blocked stories due to dependencies" },
+    {
+      id: "story-4",
+      text: "As a PM, I can see blocked stories due to dependencies",
+      status: "todo",
+      priority: "medium",
+      storyPoints: 5,
+      storyKey: "AS-4",
+    },
   ],
   [cellKey("sprint-4", "feature-5")]: [
-    { id: "story-5", text: "As leadership, I can compare planned vs delivered scope" },
+    {
+      id: "story-5",
+      text: "As leadership, I can compare planned vs delivered scope",
+      status: "todo",
+      priority: "low",
+      storyPoints: 3,
+      storyKey: "AS-5",
+    },
+  ],
+  [cellKey(BACKLOG_SPRINT_ID, "feature-1")]: [
+    {
+      id: "story-6",
+      text: "As a PM, I can invite team members via email link",
+      status: "todo",
+      priority: "medium",
+      storyPoints: 2,
+      storyKey: "AS-6",
+    },
+  ],
+  [cellKey(BACKLOG_SPRINT_ID, "feature-3")]: [
+    {
+      id: "story-7",
+      text: "As a user, I can filter the board by status or assignee",
+      status: "todo",
+      priority: "low",
+      storyPoints: 3,
+      storyKey: "AS-7",
+    },
   ],
 };
 
+// ─── Status / Priority Config ─────────────────────────────────────────────────
+const STATUS_CONFIG = {
+  todo: {
+    label: "To Do",
+    className: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  },
+  "in-progress": {
+    label: "In Progress",
+    className: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+  },
+  done: {
+    label: "Done",
+    className: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+  },
+  blocked: {
+    label: "Blocked",
+    className: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+  },
+} as const;
+
+const PRIORITY_CONFIG = {
+  high: { label: "High", barColor: "bg-red-400", textColor: "text-red-500" },
+  medium: { label: "Med", barColor: "bg-amber-400", textColor: "text-amber-500" },
+  low: { label: "Low", barColor: "bg-sky-300", textColor: "text-sky-500" },
+} as const;
+
+// ─── DroppableCell ────────────────────────────────────────────────────────────
+function DroppableCell({
+  sprintId,
+  featureId,
+  children,
+  className,
+}: {
+  sprintId: string;
+  featureId: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `drop::${cellKey(sprintId, featureId)}`,
+    data: { type: "cell", sprintId, featureId },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        className,
+        isOver && "bg-primary/5 ring-1 ring-inset ring-primary/20 rounded-sm"
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ─── SortableStoryCard ────────────────────────────────────────────────────────
 function SortableStoryCard({
   story,
   sprintId,
@@ -115,14 +243,21 @@ function SortableStoryCard({
   sprintId: string;
   featureId: string;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({
-      id: story.id,
-      data: {
-        sprintId,
-        featureId,
-      },
-    });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: story.id,
+    data: { sprintId, featureId },
+  });
+
+  const status = story.status ?? "todo";
+  const statusCfg = STATUS_CONFIG[status];
+  const priorityCfg = story.priority ? PRIORITY_CONFIG[story.priority] : null;
 
   return (
     <div
@@ -131,42 +266,118 @@ function SortableStoryCard({
         transform: CSS.Transform.toString(transform),
         transition,
       }}
-      className={isDragging ? "opacity-70" : "opacity-100"}
+      className={cn(isDragging ? "opacity-40 z-50" : "opacity-100")}
     >
-      <div className="group relative flex items-start rounded-xl border border-muted-foreground/15 bg-card px-3 py-2.5 shadow-xs transition-all duration-200 hover:-translate-y-[1px] hover:border-emerald-500/30 hover:shadow-sm dark:bg-muted/10">
-        <button
-          type="button"
-          aria-label="Reorder story"
-          className="mr-2 inline-flex h-5 w-5 shrink-0 cursor-grab items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-foreground active:cursor-grabbing"
-          {...attributes}
-          {...listeners}
+      <Card className="relative bg-gray-50 dark:bg-neutral-800/60 border-gray-200 dark:border-neutral-700 shadow-none hover:shadow-sm hover:border-primary/30 transition-all duration-150 overflow-hidden">
+        {/* Priority color bar on left edge */}
+        {priorityCfg && (
+          <div
+            className={cn(
+              "absolute left-0 top-0 bottom-0 w-[3px]",
+              priorityCfg.barColor
+            )}
+          />
+        )}
+        <CardContent
+          className={cn(
+            "py-2.5 pr-3 space-y-1.5",
+            priorityCfg ? "pl-3.5" : "pl-3"
+          )}
         >
-          <GripVertical className="h-3.5 w-3.5" />
-        </button>
-        <span className="text-xs leading-relaxed text-foreground/90">{story.text}</span>
-      </div>
+          {/* Row 1: Story key + drag handle */}
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10px] font-mono font-bold text-muted-foreground/60 bg-muted/60 px-1.5 py-0.5 rounded leading-tight">
+              {story.storyKey ?? story.id.replace("story-", "AS-")}
+            </span>
+            <button
+              type="button"
+              aria-label="Drag to move"
+              className="shrink-0 text-muted-foreground/30 hover:text-muted-foreground transition-colors cursor-grab active:cursor-grabbing"
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          {/* Row 2: Story text */}
+          <p className="text-xs leading-relaxed text-foreground/85 line-clamp-3">
+            {story.text}
+          </p>
+
+          {/* Row 3: Status + priority label + points */}
+          <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
+            <span
+              className={cn(
+                "text-[10px] px-1.5 py-0.5 rounded font-medium leading-tight",
+                statusCfg.className
+              )}
+            >
+              {statusCfg.label}
+            </span>
+            {priorityCfg && (
+              <span
+                className={cn(
+                  "text-[10px] font-semibold leading-tight",
+                  priorityCfg.textColor
+                )}
+              >
+                &#9650; {priorityCfg.label}
+              </span>
+            )}
+            {story.storyPoints != null && (
+              <span className="ml-auto text-[10px] font-bold text-primary/70 bg-primary/10 px-1.5 py-0.5 rounded leading-tight tabular-nums">
+                {story.storyPoints} pts
+              </span>
+            )}
+          </div>
+
+          {/* Row 4: Assignee avatar */}
+          {story.assignee && (
+            <div className="flex items-center gap-1.5 pt-0.5">
+              <div className="h-4 w-4 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center shrink-0">
+                <span className="text-[8px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">
+                  {story.assignee.charAt(0)}
+                </span>
+              </div>
+              <span className="text-[10px] text-muted-foreground truncate">
+                {story.assignee}
+              </span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function TasksPage() {
   const [goals, setGoals] = useState<Goal[]>(initialGoals);
   const [features, setFeatures] = useState<Feature[]>(initialFeatures);
   const [sprints, setSprints] = useState<Sprint[]>(initialSprints);
-  const [storiesByCell, setStoriesByCell] = useState<StoriesByCell>(initialStoriesByCell);
+  const [storiesByCell, setStoriesByCell] =
+    useState<StoriesByCell>(initialStoriesByCell);
 
-  const [activeModal, setActiveModal] = useState<"sprint" | "goal" | "feature" | "story" | null>(null);
+  const [activeModal, setActiveModal] = useState<
+    "sprint" | "goal" | "feature" | "story" | null
+  >(null);
 
-  // Modal forms
   const [newSprintName, setNewSprintName] = useState("");
   const [newSprintWindow, setNewSprintWindow] = useState("");
   const [newGoalTitle, setNewGoalTitle] = useState("");
   const [newFeatureTitle, setNewFeatureTitle] = useState("");
   const [newStoryText, setNewStoryText] = useState("");
 
-  const [selectedGoalId, setSelectedGoalId] = useState(initialGoals[0]?.id ?? "");
-  const [selectedSprintId, setSelectedSprintId] = useState(initialSprints[0]?.id ?? "");
-  const [selectedFeatureId, setSelectedFeatureId] = useState(initialFeatures[0]?.id ?? "");
+  const [selectedGoalId, setSelectedGoalId] = useState(
+    initialGoals[0]?.id ?? ""
+  );
+  const [selectedSprintId, setSelectedSprintId] = useState(
+    initialSprints[0]?.id ?? ""
+  );
+  const [selectedFeatureId, setSelectedFeatureId] = useState(
+    initialFeatures[0]?.id ?? ""
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -175,35 +386,19 @@ export default function TasksPage() {
     })
   );
 
-  // Dynamic Backbone layout styling helper: Goal Columns column-spanning index ranges
   const goalColumns = useMemo(() => {
     let currentIdx = 0;
     return goals.map((goal) => {
       const goalFeatures = features.filter((f) => f.goalId === goal.id);
-      const colCount = Math.max(1, goalFeatures.length); // At least 1 column per goal
-      const start = currentIdx + 2; // +1 for 1-based, +1 for sprint column
+      const colCount = Math.max(1, goalFeatures.length);
+      const start = currentIdx + 2;
       const end = start + colCount;
       currentIdx += colCount;
-      return {
-        ...goal,
-        colCount,
-        start,
-        end,
-      };
+      return { ...goal, colCount, start, end };
     });
   }, [goals, features]);
 
-  const goalFeatureCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const goal of goals) {
-      counts[goal.id] = 0;
-    }
-    for (const feature of features) {
-      counts[feature.goalId] = (counts[feature.goalId] ?? 0) + 1;
-    }
-    return counts;
-  }, [goals, features]);
-
+  // ─── CRUD ──────────────────────────────────────────────────────────────────
   const addSprint = () => {
     const name = newSprintName.trim();
     if (!name) return;
@@ -245,6 +440,8 @@ export default function TasksPage() {
     const story: StoryItem = {
       id: `story-${Date.now()}`,
       text,
+      status: "todo",
+      storyKey: `AS-${Date.now() % 1000}`,
     };
     setStoriesByCell((prev) => ({
       ...prev,
@@ -256,11 +453,13 @@ export default function TasksPage() {
 
   const addStoryToCell = (sprintId: string, featureId: string) => {
     const text = window.prompt("New User Story / Task:");
-    if (!text || !text.trim()) return;
+    if (!text?.trim()) return;
     const key = cellKey(sprintId, featureId);
     const story: StoryItem = {
       id: `story-${Date.now()}`,
       text: text.trim(),
+      status: "todo",
+      storyKey: `AS-${Date.now() % 1000}`,
     };
     setStoriesByCell((prev) => ({
       ...prev,
@@ -268,81 +467,169 @@ export default function TasksPage() {
     }));
   };
 
+  // ─── Drag & Drop ────────────────────────────────────────────────────────────
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
-    if (!over || active.id === over.id) return;
+    if (!over) return;
 
-    const activeData = active.data.current as { sprintId?: string; featureId?: string } | undefined;
-    const overData = over.data.current as { sprintId?: string; featureId?: string } | undefined;
+    const activeData = active.data.current as
+      | { sprintId?: string; featureId?: string }
+      | undefined;
+    if (!activeData?.sprintId || !activeData.featureId) return;
 
-    if (
-      !activeData?.sprintId ||
-      !activeData.featureId ||
-      activeData.sprintId !== overData?.sprintId ||
-      activeData.featureId !== overData?.featureId
-    ) {
-      return;
+    const overData = over.data.current as
+      | { type?: string; sprintId?: string; featureId?: string }
+      | undefined;
+
+    const targetSprintId = overData?.sprintId;
+    const targetFeatureId = overData?.featureId;
+    if (!targetSprintId || !targetFeatureId) return;
+
+    const sourceKey = cellKey(activeData.sprintId, activeData.featureId);
+    const targetKey = cellKey(targetSprintId, targetFeatureId);
+
+    if (sourceKey === targetKey) {
+      if (active.id === over.id) return;
+      setStoriesByCell((prev) => {
+        const items = prev[sourceKey] ?? [];
+        const oldIndex = items.findIndex((s) => s.id === active.id);
+        const newIndex = items.findIndex((s) => s.id === over.id);
+        if (oldIndex < 0 || newIndex < 0) return prev;
+        return { ...prev, [sourceKey]: arrayMove(items, oldIndex, newIndex) };
+      });
+    } else {
+      setStoriesByCell((prev) => {
+        const sourceItems = [...(prev[sourceKey] ?? [])];
+        const targetItems = [...(prev[targetKey] ?? [])];
+
+        const storyIdx = sourceItems.findIndex((s) => s.id === active.id);
+        if (storyIdx < 0) return prev;
+
+        const [story] = sourceItems.splice(storyIdx, 1);
+        const overIdx = targetItems.findIndex((s) => s.id === over.id);
+        if (overIdx >= 0) {
+          targetItems.splice(overIdx, 0, story);
+        } else {
+          targetItems.push(story);
+        }
+
+        return {
+          ...prev,
+          [sourceKey]: sourceItems,
+          [targetKey]: targetItems,
+        };
+      });
     }
-
-    const key = cellKey(activeData.sprintId, activeData.featureId);
-    setStoriesByCell((prev) => {
-      const laneItems = prev[key] ?? [];
-      const oldIndex = laneItems.findIndex((item) => item.id === active.id);
-      const newIndex = laneItems.findIndex((item) => item.id === over.id);
-      if (oldIndex < 0 || newIndex < 0) return prev;
-      return {
-        ...prev,
-        [key]: arrayMove(laneItems, oldIndex, newIndex),
-      };
-    });
   };
 
   const totalGoalColumns = goalColumns.reduce((sum, g) => sum + g.colCount, 0);
-  const gridTemplateColumnsString = `200px ${Array(totalGoalColumns).fill("minmax(240px, 1fr)").join(" ")}`;
+  const gridTemplateColumnsString = `200px ${Array(totalGoalColumns)
+    .fill("minmax(240px, 1fr)")
+    .join(" ")}`;
+
+  const renderCellContent = (sprintId: string, featureId: string) => {
+    const key = cellKey(sprintId, featureId);
+    const laneStories = storiesByCell[key] ?? [];
+    return (
+      <DroppableCell
+        sprintId={sprintId}
+        featureId={featureId}
+        className="flex flex-col justify-between h-full"
+      >
+        <SortableContext
+          items={laneStories.map((s) => s.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-2">
+            {laneStories.map((story) => (
+              <SortableStoryCard
+                key={story.id}
+                story={story}
+                sprintId={sprintId}
+                featureId={featureId}
+              />
+            ))}
+          </div>
+        </SortableContext>
+
+        <button
+          type="button"
+          className="group mt-3 flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-border/80 bg-background/40 py-2 text-xs text-muted-foreground hover:bg-background hover:text-foreground hover:border-primary/20 active:scale-[0.98] transition-all duration-150"
+          onClick={() => addStoryToCell(sprintId, featureId)}
+        >
+          <Plus className="h-3.5 w-3.5 text-muted-foreground/60 group-hover:text-primary" />
+          <span>Add Story</span>
+        </button>
+      </DroppableCell>
+    );
+  };
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <div className="flex flex-1 min-h-0 flex-col overflow-hidden p-4 lg:p-6">
-        {/* Header Section */}
+        {/* Page header */}
         <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-4xl font-bold mb-1 tracking-tight">Tasks & Story Map</h1>
+            <h1 className="text-4xl font-bold mb-1 tracking-tight">
+              Tasks &amp; Story Map
+            </h1>
             <p className="text-sm text-muted-foreground">
-              Define the user journey backbone with goals and features, and map user stories to implementation sprints.
+              Define the user journey backbone with goals and features, and map
+              user stories to implementation sprints.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setActiveModal("sprint")}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setActiveModal("sprint")}
+            >
               <Plus className="h-3.5 w-3.5" />
               Sprint
             </Button>
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setActiveModal("goal")}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setActiveModal("goal")}
+            >
               <Target className="h-3.5 w-3.5 text-sky-600" />
               Goal
             </Button>
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setActiveModal("feature")}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setActiveModal("feature")}
+            >
               <Layers className="h-3.5 w-3.5 text-indigo-600" />
               Feature
             </Button>
-            <Button size="sm" className="gap-1.5 shadow-sm" onClick={() => {
-              if (goals.length === 0 || features.length === 0) {
-                alert("Please add at least one Goal and Feature first!");
-                return;
-              }
-              setActiveModal("story");
-}}>
+            <Button
+              size="sm"
+              className="gap-1.5 shadow-sm"
+              onClick={() => {
+                if (goals.length === 0 || features.length === 0) {
+                  alert("Please add at least one Goal and Feature first!");
+                  return;
+                }
+                setActiveModal("story");
+              }}
+            >
               <Plus className="h-3.5 w-3.5" />
               Add Story
             </Button>
           </div>
         </div>
 
-        {/* Story Mapping Board Matrix */}
+        {/* Story Mapping Board */}
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCenter}
+          collisionDetection={closestCorners}
           onDragEnd={handleDragEnd}
         >
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border/70 bg-muted/10 shadow-xs">
+            {/* Board toolbar */}
             <div className="flex items-center justify-between border-b border-border/60 bg-muted/20 px-5 py-3">
               <div className="flex items-center gap-3">
                 <Badge variant="secondary" className="gap-1 text-xs">
@@ -360,62 +647,53 @@ export default function TasksPage() {
                 </Badge>
               </div>
               <p className="hidden text-xs text-muted-foreground sm:inline-block">
-                Drag stories to prioritize. Double click/click add button to append any story.
+                Drag stories across sprints, goals, or into the backlog.
               </p>
             </div>
 
-            <div className="border-b border-border/60 bg-background/60 px-5 py-3">
-              <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                <Target className="h-3.5 w-3.5 text-sky-500" />
-                Active Goals
-              </div>
-              <div className="flex gap-2 overflow-x-auto pb-0.5">
-                {goals.map((goal) => (
-                  <div
-                    key={goal.id}
-                    className="shrink-0 rounded-lg border border-sky-200/70 bg-sky-50/60 px-3 py-2 dark:border-sky-900/50 dark:bg-sky-950/20"
-                  >
-                    <p className="text-xs font-medium leading-tight text-foreground">{goal.title}</p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      {goalFeatureCounts[goal.id] ?? 0} feature{(goalFeatureCounts[goal.id] ?? 0) === 1 ? "" : "s"}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
 
             {features.length === 0 ? (
               <div className="flex flex-1 flex-col items-center justify-center p-12 text-center">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-muted/60 text-muted-foreground">
                   <Layers className="h-6 w-6" />
                 </div>
-                <h3 className="mt-4 text-base font-semibold">Storyboard is empty</h3>
+                <h3 className="mt-4 text-base font-semibold">
+                  Storyboard is empty
+                </h3>
                 <p className="mt-2 max-w-[280px] text-xs text-muted-foreground leading-relaxed">
-                  Get started by adding a user Goal, inserting your product Features, and mapping user Stories beneath them.
+                  Get started by adding a user Goal, inserting your product
+                  Features, and mapping user Stories beneath them.
                 </p>
                 <div className="mt-4 flex gap-2">
-                  <Button size="sm" onClick={() => setActiveModal("goal")}>Add Goal</Button>
-                  <Button size="sm" variant="outline" onClick={() => setActiveModal("feature")}>Add Feature</Button>
+                  <Button size="sm" onClick={() => setActiveModal("goal")}>
+                    Add Goal
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setActiveModal("feature")}
+                  >
+                    Add Feature
+                  </Button>
                 </div>
               </div>
             ) : (
               <div className="min-h-0 flex-1 overflow-auto">
                 <div className="min-w-[1220px]">
-                  {/* Goal backbone Level 1 */}
+
+                  {/* ── Row 1: Goal Backbone (sticky, light gray) ─────────── */}
                   <div
-                    className="sticky top-0 z-40 grid border-b border-border/70 bg-muted/30 font-medium text-xs uppercase"
+                    className="sticky top-0 z-40 grid border-b border-border/70 bg-gray-100 dark:bg-neutral-900 font-medium text-xs uppercase"
                     style={{ gridTemplateColumns: gridTemplateColumnsString }}
                   >
-                    <div className="border-r border-border/70 bg-background/95 px-5 py-2.5 font-bold tracking-wider text-muted-foreground shadow-xs">
+                    <div className="border-r border-border/70 bg-gray-100 dark:bg-neutral-900 px-5 py-2.5 font-bold tracking-wider text-muted-foreground">
                       The Backbone
                     </div>
                     {goalColumns.map((goal) => (
                       <div
                         key={goal.id}
-                        className="border-r border-border/70 bg-background/95 px-5 py-2.5 shadow-xs"
-                        style={{
-                          gridColumn: `${goal.start} / ${goal.end}`,
-                        }}
+                        className="border-r border-border/70 bg-gray-100 dark:bg-neutral-900 px-5 py-2.5"
+                        style={{ gridColumn: `${goal.start} / ${goal.end}` }}
                       >
                         <div className="flex items-center gap-1.5 font-semibold text-sky-700 dark:text-sky-300">
                           <Target className="h-3.5 w-3.5" />
@@ -425,102 +703,175 @@ export default function TasksPage() {
                     ))}
                   </div>
 
-                  {/* Feature level 2 Header Row */}
+                  {/* ── Row 2: Feature Headers (sticky, light gray) ────────── */}
                   <div
-                    className="sticky top-[37px] z-30 grid border-b border-border/70 bg-background/90"
+                    className="sticky top-[37px] z-30 grid border-b border-border/70 bg-gray-50 dark:bg-neutral-800/80"
                     style={{ gridTemplateColumns: gridTemplateColumnsString }}
                   >
-                    <div className="border-r border-border/70 bg-background px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Sprints & Actions
+                    <div className="border-r border-border/70 bg-gray-50 dark:bg-neutral-800/80 px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Sprints &amp; Actions
                     </div>
                     {goalColumns.map((goal) => {
-                      const goalFeatures = features.filter((f) => f.goalId === goal.id);
+                      const goalFeatures = features.filter(
+                        (f) => f.goalId === goal.id
+                      );
                       if (goalFeatures.length === 0) {
                         return (
-                          <div key={`empty-${goal.id}`} className="border-r border-border/70 px-5 py-3 bg-background" />
+                          <div
+                            key={`empty-${goal.id}`}
+                            className="border-r border-border/70 px-5 py-3 bg-gray-50 dark:bg-neutral-800/80"
+                          />
                         );
                       }
                       return goalFeatures.map((feature) => (
-                        <div key={feature.id} className="border-r border-border/70 px-5 py-3 bg-background">
+                        <div
+                          key={feature.id}
+                          className="border-r border-border/70 px-5 py-3 bg-gray-50 dark:bg-neutral-800/80"
+                        >
                           <div className="flex items-center gap-1.5 font-semibold text-primary/80">
                             <Layers className="h-3.5 w-3.5 text-indigo-500/80" />
-                            <span className="text-sm tracking-tight">{feature.title}</span>
+                            <span className="text-sm tracking-tight">
+                              {feature.title}
+                            </span>
                           </div>
                         </div>
                       ));
                     })}
                   </div>
 
-                  {/* Sprints Vertical Axis & Cells */}
+                  {/* ── Sprint Rows ─────────────────────────────────────────── */}
                   {sprints.map((sprint) => (
                     <div
                       key={sprint.id}
-                      className="grid border-b border-border/60 last:border-b-0 hover:bg-muted/5 transition-colors duration-150"
+                      className="grid border-b border-border/60 hover:bg-muted/5 transition-colors duration-150"
                       style={{ gridTemplateColumns: gridTemplateColumnsString }}
                     >
-                      {/* Vertical axis row-header */}
                       <div className="sticky left-0 z-20 border-r border-border/70 bg-background/95 px-5 py-5 flex flex-col justify-center backdrop-blur shadow-xs">
-                        <p className="text-sm font-bold tracking-tight">{sprint.name}</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5 font-medium">{sprint.window}</p>
+                        <p className="text-sm font-bold tracking-tight">
+                          {sprint.name}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5 font-medium">
+                          {sprint.window}
+                        </p>
                       </div>
 
-                      {/* Lane stories cells */}
                       {goalColumns.map((goal) => {
-                        const goalFeatures = features.filter((f) => f.goalId === goal.id);
+                        const goalFeatures = features.filter(
+                          (f) => f.goalId === goal.id
+                        );
                         if (goalFeatures.length === 0) {
                           return (
-                            <div key={`empty-${goal.id}`} className="border-r border-border/60 p-3 last:border-r-0 flex flex-col justify-between bg-card/10" />
+                            <div
+                              key={`empty-${goal.id}`}
+                              className="border-r border-border/60 p-3 last:border-r-0 bg-card/10"
+                            />
                           );
                         }
-                        return goalFeatures.map((feature) => {
-                          const key = cellKey(sprint.id, feature.id);
-                          const laneStories = storiesByCell[key] ?? [];
-
-                          return (
-                            <div key={feature.id} className="border-r border-border/60 p-3 last:border-r-0 flex flex-col justify-between bg-card/10">
-                              <SortableContext
-                                items={laneStories.map((story) => story.id)}
-                                strategy={verticalListSortingStrategy}
-                              >
-                                <div className="space-y-2">
-                                  {laneStories.map((story) => (
-                                    <SortableStoryCard
-                                      key={story.id}
-                                      story={story}
-                                      sprintId={sprint.id}
-                                      featureId={feature.id}
-                                    />
-                                  ))}
-                                </div>
-                              </SortableContext>
-
-                              <button
-                                type="button"
-                                className="group mt-3 flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-border/80 bg-background/40 py-2 text-xs text-muted-foreground hover:bg-background hover:text-foreground hover:border-emerald-500/20 active:scale-[0.98] transition-all duration-150"
-                                onClick={() => addStoryToCell(sprint.id, feature.id)}
-                              >
-                                <Plus className="h-3.5 w-3.5 text-muted-foreground/60 group-hover:text-emerald-500" />
-                                <span>Add Story</span>
-                              </button>
-                            </div>
-                          );
-                        });
+                        return goalFeatures.map((feature) => (
+                          <div
+                            key={feature.id}
+                            className="border-r border-border/60 p-3 last:border-r-0 bg-card/10"
+                          >
+                            {renderCellContent(sprint.id, feature.id)}
+                          </div>
+                        ));
                       })}
                     </div>
                   ))}
+
+                  {/* ── Backlog Row ─────────────────────────────────────────── */}
+                  <div className="border-t-2 border-dashed border-border/60">
+                    {/* Backlog section header */}
+                    <div
+                      className="grid border-b border-border/60 bg-amber-50/70 dark:bg-amber-950/20"
+                      style={{ gridTemplateColumns: gridTemplateColumnsString }}
+                    >
+                      <div className="border-r border-border/70 px-5 py-2.5 flex items-center gap-2">
+                        <Archive className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                        <span className="text-xs font-bold tracking-wider uppercase text-amber-700 dark:text-amber-300">
+                          Backlog
+                        </span>
+                      </div>
+                      {goalColumns.map((goal) => {
+                        const goalFeatures = features.filter(
+                          (f) => f.goalId === goal.id
+                        );
+                        if (goalFeatures.length === 0) {
+                          return (
+                            <div
+                              key={`bl-empty-${goal.id}`}
+                              className="border-r border-border/60 px-5 py-2.5 last:border-r-0"
+                            />
+                          );
+                        }
+                        return goalFeatures.map((feature) => (
+                          <div
+                            key={`bl-feat-${feature.id}`}
+                            className="border-r border-border/60 px-5 py-2.5 last:border-r-0"
+                          >
+                            <span className="text-[11px] text-muted-foreground/70 italic">
+                              {feature.title}
+                            </span>
+                          </div>
+                        ));
+                      })}
+                    </div>
+
+                    {/* Backlog story cells */}
+                    <div
+                      className="grid border-b border-border/60 bg-amber-50/30 dark:bg-amber-950/10"
+                      style={{ gridTemplateColumns: gridTemplateColumnsString }}
+                    >
+                      <div className="sticky left-0 z-20 border-r border-border/70 bg-amber-50/70 dark:bg-amber-950/20 px-5 py-4 flex flex-col justify-center backdrop-blur">
+                        <p className="text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                          Unscheduled
+                        </p>
+                        <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                          Drag here to defer
+                        </p>
+                      </div>
+
+                      {goalColumns.map((goal) => {
+                        const goalFeatures = features.filter(
+                          (f) => f.goalId === goal.id
+                        );
+                        if (goalFeatures.length === 0) {
+                          return (
+                            <div
+                              key={`bl-empty-cell-${goal.id}`}
+                              className="border-r border-border/60 p-3 last:border-r-0"
+                            />
+                          );
+                        }
+                        return goalFeatures.map((feature) => (
+                          <div
+                            key={`bl-cell-${feature.id}`}
+                            className="border-r border-border/60 p-3 last:border-r-0"
+                          >
+                            {renderCellContent(BACKLOG_SPRINT_ID, feature.id)}
+                          </div>
+                        ));
+                      })}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
           </div>
         </DndContext>
 
-        {/* --- DIALOG MODALS --- */}
-        {/* Add Sprint Modal */}
-        <Dialog open={activeModal === "sprint"} onOpenChange={(open) => !open && setActiveModal(null)}>
+        {/* ── DIALOG MODALS ──────────────────────────────────────────────────── */}
+
+        <Dialog
+          open={activeModal === "sprint"}
+          onOpenChange={(open) => !open && setActiveModal(null)}
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add New Sprint Row</DialogTitle>
-              <DialogDescription>Create a vertical row to organize sprint delivery targets.</DialogDescription>
+              <DialogDescription>
+                Create a vertical row to organize sprint delivery targets.
+              </DialogDescription>
             </DialogHeader>
             <div className="grid gap-3.5 py-3">
               <div className="space-y-1.5">
@@ -543,18 +894,26 @@ export default function TasksPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setActiveModal(null)}>Cancel</Button>
-              <Button onClick={addSprint} disabled={!newSprintName.trim()}>Create Sprint</Button>
+              <Button variant="ghost" onClick={() => setActiveModal(null)}>
+                Cancel
+              </Button>
+              <Button onClick={addSprint} disabled={!newSprintName.trim()}>
+                Create Sprint
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Add Goal Modal */}
-        <Dialog open={activeModal === "goal"} onOpenChange={(open) => !open && setActiveModal(null)}>
+        <Dialog
+          open={activeModal === "goal"}
+          onOpenChange={(open) => !open && setActiveModal(null)}
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add User Goal</DialogTitle>
-              <DialogDescription>Goals organize features horizontally in your story map backbone.</DialogDescription>
+              <DialogDescription>
+                Goals organize features horizontally in your story map backbone.
+              </DialogDescription>
             </DialogHeader>
             <div className="grid gap-3.5 py-3">
               <div className="space-y-1.5">
@@ -568,18 +927,26 @@ export default function TasksPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setActiveModal(null)}>Cancel</Button>
-              <Button onClick={addGoal} disabled={!newGoalTitle.trim()}>Create Goal</Button>
+              <Button variant="ghost" onClick={() => setActiveModal(null)}>
+                Cancel
+              </Button>
+              <Button onClick={addGoal} disabled={!newGoalTitle.trim()}>
+                Create Goal
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Add Feature Modal */}
-        <Dialog open={activeModal === "feature"} onOpenChange={(open) => !open && setActiveModal(null)}>
+        <Dialog
+          open={activeModal === "feature"}
+          onOpenChange={(open) => !open && setActiveModal(null)}
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add Product Feature</DialogTitle>
-              <DialogDescription>Identify features underneath specific backbone goals.</DialogDescription>
+              <DialogDescription>
+                Identify features underneath specific backbone goals.
+              </DialogDescription>
             </DialogHeader>
             <div className="grid gap-3.5 py-3">
               <div className="space-y-1.5">
@@ -608,18 +975,29 @@ export default function TasksPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setActiveModal(null)}>Cancel</Button>
-              <Button onClick={addFeature} disabled={!newFeatureTitle.trim() || !selectedGoalId}>Create Feature</Button>
+              <Button variant="ghost" onClick={() => setActiveModal(null)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={addFeature}
+                disabled={!newFeatureTitle.trim() || !selectedGoalId}
+              >
+                Create Feature
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Add Story Modal */}
-        <Dialog open={activeModal === "story"} onOpenChange={(open) => !open && setActiveModal(null)}>
+        <Dialog
+          open={activeModal === "story"}
+          onOpenChange={(open) => !open && setActiveModal(null)}
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add User Story / Task</DialogTitle>
-              <DialogDescription>Map concrete tasks to features and implementation runs.</DialogDescription>
+              <DialogDescription>
+                Map concrete tasks to features and implementation runs.
+              </DialogDescription>
             </DialogHeader>
             <div className="grid gap-3.5 py-3">
               <div className="space-y-1.5">
@@ -635,6 +1013,9 @@ export default function TasksPage() {
                       {s.name} ({s.window})
                     </option>
                   ))}
+                  <option value={BACKLOG_SPRINT_ID}>
+                    Backlog (Unscheduled)
+                  </option>
                 </select>
               </div>
               <div className="space-y-1.5">
@@ -663,12 +1044,15 @@ export default function TasksPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setActiveModal(null)}>Cancel</Button>
-              <Button onClick={addStory} disabled={!newStoryText.trim()}>Map Story</Button>
+              <Button variant="ghost" onClick={() => setActiveModal(null)}>
+                Cancel
+              </Button>
+              <Button onClick={addStory} disabled={!newStoryText.trim()}>
+                Map Story
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
       </div>
     </div>
   );
