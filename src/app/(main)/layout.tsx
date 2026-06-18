@@ -22,7 +22,7 @@ export default function MainLayout({
     >
       <SidebarController />
       <AppSidebar variant="inset" />
-      <SidebarInset>
+      <SidebarInset className="min-w-0 overflow-hidden">
         <SiteHeader />
         {children}
       </SidebarInset>
