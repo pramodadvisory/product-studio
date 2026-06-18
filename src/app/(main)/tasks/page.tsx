@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +35,8 @@ import {
 import {
   Archive,
   CalendarRange,
+  ChevronLeft,
+  ChevronRight,
   Flag,
   GripVertical,
   Layers,
@@ -82,17 +84,21 @@ function cellKey(sprintId: string, featureId: string) {
 
 // ─── Seed Data ────────────────────────────────────────────────────────────────
 const initialGoals: Goal[] = [
-  { id: "goal-1", title: "Acquire and activate users faster" },
-  { id: "goal-2", title: "Improve planning confidence" },
-  { id: "goal-3", title: "Increase predictable delivery" },
+  { id: "goal-1", title: "User Authentication" },
+  { id: "goal-2", title: "Account Setup" },
+  { id: "goal-3", title: "Data Integration" },
+  { id: "goal-4", title: "First Success" },
 ];
 
 const initialFeatures: Feature[] = [
-  { id: "feature-1", title: "Workspace setup", goalId: "goal-1" },
-  { id: "feature-2", title: "Guided onboarding", goalId: "goal-1" },
-  { id: "feature-3", title: "Story map board", goalId: "goal-2" },
-  { id: "feature-4", title: "Dependency insights", goalId: "goal-3" },
-  { id: "feature-5", title: "Sprint forecasting", goalId: "goal-3" },
+  { id: "feature-1", title: "Sign up & login", goalId: "goal-1" },
+  { id: "feature-2", title: "Email verification", goalId: "goal-1" },
+  { id: "feature-3", title: "Create workspace", goalId: "goal-2" },
+  { id: "feature-4", title: "Invite team members", goalId: "goal-2" },
+  { id: "feature-5", title: "Connect data source", goalId: "goal-3" },
+  { id: "feature-6", title: "Map data fields", goalId: "goal-3" },
+  { id: "feature-7", title: "Create dashboard", goalId: "goal-4" },
+  { id: "feature-8", title: "Set up alerts", goalId: "goal-4" },
 ];
 
 const initialSprints: Sprint[] = [
@@ -106,73 +112,132 @@ const initialStoriesByCell: StoriesByCell = {
   [cellKey("sprint-1", "feature-1")]: [
     {
       id: "story-1",
-      text: "As a PM, I can create a workspace in under 2 minutes",
+      text: "Implement email/password sign up form with validation",
       status: "done",
       priority: "high",
-      storyPoints: 3,
-      storyKey: "AS-1",
+      storyPoints: 5,
+      storyKey: "AUTH-1",
       assignee: "Alice",
+    },
+    {
+      id: "story-2",
+      text: "Add Google OAuth integration for sign up",
+      status: "done",
+      priority: "high",
+      storyPoints: 8,
+      storyKey: "AUTH-2",
+      assignee: "Charlie",
     },
   ],
   [cellKey("sprint-1", "feature-2")]: [
     {
-      id: "story-2",
-      text: "As a new user, I can complete onboarding with contextual tips",
+      id: "story-3",
+      text: "Create email verification flow with token expiration",
       status: "in-progress",
       priority: "high",
       storyPoints: 5,
-      storyKey: "AS-2",
+      storyKey: "AUTH-3",
       assignee: "Bob",
     },
   ],
   [cellKey("sprint-2", "feature-3")]: [
     {
-      id: "story-3",
-      text: "As a team, we can prioritize stories with drag and drop",
-      status: "in-progress",
-      priority: "medium",
-      storyPoints: 8,
-      storyKey: "AS-3",
-    },
-  ],
-  [cellKey("sprint-3", "feature-4")]: [
-    {
       id: "story-4",
-      text: "As a PM, I can see blocked stories due to dependencies",
-      status: "todo",
-      priority: "medium",
-      storyPoints: 5,
-      storyKey: "AS-4",
+      text: "Create workspace with unique slug and branding",
+      status: "in-progress",
+      priority: "high",
+      storyPoints: 8,
+      storyKey: "SETUP-1",
+      assignee: "Alice",
     },
   ],
-  [cellKey("sprint-4", "feature-5")]: [
+  [cellKey("sprint-2", "feature-4")]: [
     {
       id: "story-5",
-      text: "As leadership, I can compare planned vs delivered scope",
+      text: "Invite team members with role-based permissions",
       status: "todo",
-      priority: "low",
+      priority: "high",
+      storyPoints: 5,
+      storyKey: "SETUP-2",
+      assignee: "Bob",
+    },
+    {
+      id: "story-6",
+      text: "Send invite emails with onboarding link",
+      status: "todo",
+      priority: "medium",
       storyPoints: 3,
-      storyKey: "AS-5",
+      storyKey: "SETUP-3",
+    },
+  ],
+  [cellKey("sprint-3", "feature-5")]: [
+    {
+      id: "story-7",
+      text: "Build connector UI for popular data sources",
+      status: "todo",
+      priority: "high",
+      storyPoints: 13,
+      storyKey: "DATA-1",
+    },
+  ],
+  [cellKey("sprint-3", "feature-6")]: [
+    {
+      id: "story-8",
+      text: "Create field mapping interface for data transformation",
+      status: "todo",
+      priority: "medium",
+      storyPoints: 8,
+      storyKey: "DATA-2",
+    },
+  ],
+  [cellKey("sprint-4", "feature-7")]: [
+    {
+      id: "story-9",
+      text: "Build dashboard builder with drag and drop",
+      status: "todo",
+      priority: "high",
+      storyPoints: 13,
+      storyKey: "DASH-1",
+    },
+  ],
+  [cellKey("sprint-4", "feature-8")]: [
+    {
+      id: "story-10",
+      text: "Implement alert rules and notifications",
+      status: "todo",
+      priority: "medium",
+      storyPoints: 8,
+      storyKey: "DASH-2",
     },
   ],
   [cellKey(BACKLOG_SPRINT_ID, "feature-1")]: [
     {
-      id: "story-6",
-      text: "As a PM, I can invite team members via email link",
+      id: "story-11",
+      text: "Add two-factor authentication for security",
       status: "todo",
       priority: "medium",
-      storyPoints: 2,
-      storyKey: "AS-6",
+      storyPoints: 5,
+      storyKey: "AUTH-4",
     },
   ],
-  [cellKey(BACKLOG_SPRINT_ID, "feature-3")]: [
+  [cellKey(BACKLOG_SPRINT_ID, "feature-5")]: [
     {
-      id: "story-7",
-      text: "As a user, I can filter the board by status or assignee",
+      id: "story-12",
+      text: "Support additional data sources (Salesforce, HubSpot)",
       status: "todo",
       priority: "low",
-      storyPoints: 3,
-      storyKey: "AS-7",
+      storyPoints: 13,
+      storyKey: "DATA-3",
+    },
+  ],
+  [cellKey(BACKLOG_SPRINT_ID, "feature-7")]: [
+    {
+      id: "story-13",
+      text: "Add dashboard templates for quick setup",
+      status: "todo",
+      priority: "low",
+      storyPoints: 8,
+      storyKey: "DASH-3",
     },
   ],
 };
@@ -268,84 +333,58 @@ function SortableStoryCard({
       }}
       className={cn(isDragging ? "opacity-40 z-50" : "opacity-100")}
     >
-      <Card className="relative bg-gray-50 dark:bg-neutral-800/60 border-gray-200 dark:border-neutral-700 shadow-none hover:shadow-sm hover:border-primary/30 transition-all duration-150 overflow-hidden">
-        {/* Priority color bar on left edge */}
-        {priorityCfg && (
-          <div
-            className={cn(
-              "absolute left-0 top-0 bottom-0 w-[3px]",
-              priorityCfg.barColor
-            )}
-          />
-        )}
-        <CardContent
-          className={cn(
-            "py-2.5 pr-3 space-y-1.5",
-            priorityCfg ? "pl-3.5" : "pl-3"
-          )}
-        >
-          {/* Row 1: Story key + drag handle */}
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] font-mono font-bold text-muted-foreground/60 bg-muted/60 px-1.5 py-0.5 rounded leading-tight">
-              {story.storyKey ?? story.id.replace("story-", "AS-")}
-            </span>
-            <button
-              type="button"
-              aria-label="Drag to move"
-              className="shrink-0 text-muted-foreground/30 hover:text-muted-foreground transition-colors cursor-grab active:cursor-grabbing"
-              {...attributes}
-              {...listeners}
-            >
-              <GripVertical className="h-3.5 w-3.5" />
-            </button>
-          </div>
+      <Card className="overflow-hidden hover:shadow-sm transition-all duration-150 bg-gray-50 dark:bg-slate-900/30">
+        <div className="flex gap-2">
+          {/* Drag handle on left */}
+          <button
+            type="button"
+            aria-label="Drag to move"
+            className="flex items-center justify-center px-2 text-muted-foreground/40 hover:text-muted-foreground transition-colors cursor-grab active:cursor-grabbing shrink-0"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
 
-          {/* Row 2: Story text */}
-          <p className="text-xs leading-relaxed text-foreground/85 line-clamp-3">
-            {story.text}
-          </p>
-
-          {/* Row 3: Status + priority label + points */}
-          <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
-            <span
-              className={cn(
-                "text-[10px] px-1.5 py-0.5 rounded font-medium leading-tight",
-                statusCfg.className
-              )}
-            >
-              {statusCfg.label}
-            </span>
-            {priorityCfg && (
-              <span
-                className={cn(
-                  "text-[10px] font-semibold leading-tight",
-                  priorityCfg.textColor
-                )}
-              >
-                &#9650; {priorityCfg.label}
-              </span>
-            )}
-            {story.storyPoints != null && (
-              <span className="ml-auto text-[10px] font-bold text-primary/70 bg-primary/10 px-1.5 py-0.5 rounded leading-tight tabular-nums">
-                {story.storyPoints} pts
-              </span>
-            )}
-          </div>
-
-          {/* Row 4: Assignee avatar */}
-          {story.assignee && (
-            <div className="flex items-center gap-1.5 pt-0.5">
-              <div className="h-4 w-4 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center shrink-0">
-                <span className="text-[8px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">
-                  {story.assignee.charAt(0)}
-                </span>
+          {/* Content */}
+          <CardContent className="flex-1 py-3 pr-3">
+            <div className="space-y-2 break-words">
+              {/* Story key */}
+              <div className="text-xs font-medium text-muted-foreground">
+                {story.storyKey ?? story.id.replace("story-", "AS-")}
               </div>
-              <span className="text-[10px] text-muted-foreground truncate">
-                {story.assignee}
-              </span>
+
+              {/* Story text */}
+              <p className="text-sm text-foreground line-clamp-3">
+                {story.text}
+              </p>
+
+              {/* Status + priority label + points */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={cn("text-xs px-2 py-1 rounded", statusCfg.className)}>
+                  {statusCfg.label}
+                </span>
+                {story.storyPoints != null && (
+                  <span className="text-xs text-muted-foreground">
+                    {story.storyPoints} pts
+                  </span>
+                )}
+              </div>
+
+              {/* Assignee */}
+              {story.assignee && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center shrink-0">
+                    <span className="font-medium text-[11px]">
+                      {story.assignee.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <span className="truncate">{story.assignee}</span>
+                </div>
+              )}
             </div>
-          )}
-        </CardContent>
+          </CardContent>
+        </div>
       </Card>
     </div>
   );
@@ -431,6 +470,42 @@ export default function TasksPage() {
     setSelectedFeatureId(id);
     setNewFeatureTitle("");
     setActiveModal(null);
+  };
+
+  const moveGoal = (goalId: string, direction: "left" | "right") => {
+    setGoals((prev) => {
+      const oldIndex = prev.findIndex((goal) => goal.id === goalId);
+      if (oldIndex < 0) return prev;
+      const nextIndex = direction === "left" ? oldIndex - 1 : oldIndex + 1;
+      if (nextIndex < 0 || nextIndex >= prev.length) return prev;
+      return arrayMove(prev, oldIndex, nextIndex);
+    });
+  };
+
+  const moveFeatureWithinGoal = (
+    goalId: string,
+    featureId: string,
+    direction: "left" | "right"
+  ) => {
+    setFeatures((prev) => {
+      const goalFeatures = prev.filter((feature) => feature.goalId === goalId);
+      if (goalFeatures.length < 2) return prev;
+
+      const oldIndex = goalFeatures.findIndex((feature) => feature.id === featureId);
+      if (oldIndex < 0) return prev;
+      const nextIndex = direction === "left" ? oldIndex - 1 : oldIndex + 1;
+      if (nextIndex < 0 || nextIndex >= goalFeatures.length) return prev;
+
+      const reorderedGoalFeatures = arrayMove(goalFeatures, oldIndex, nextIndex);
+      let goalFeaturePointer = 0;
+
+      return prev.map((feature) => {
+        if (feature.goalId !== goalId) return feature;
+        const nextFeature = reorderedGoalFeatures[goalFeaturePointer];
+        goalFeaturePointer += 1;
+        return nextFeature;
+      });
+    });
   };
 
   const addStory = () => {
@@ -539,7 +614,7 @@ export default function TasksPage() {
           items={laneStories.map((s) => s.id)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="space-y-2">
+          <div className="space-y-3">
             {laneStories.map((story) => (
               <SortableStoryCard
                 key={story.id}
@@ -678,26 +753,48 @@ export default function TasksPage() {
                 </div>
               </div>
             ) : (
-              <div className="min-h-0 flex-1 overflow-auto">
+              <div className="flex-1 overflow-auto">
                 <div className="min-w-[1220px]">
 
                   {/* ── Row 1: Goal Backbone (sticky, light gray) ─────────── */}
                   <div
-                    className="sticky top-0 z-40 grid border-b border-border/70 bg-gray-100 dark:bg-neutral-900 font-medium text-xs uppercase"
+                    className="sticky top-0 z-40 grid h-10 border-b border-border/70 bg-gray-100 dark:bg-neutral-900 font-medium text-xs uppercase"
                     style={{ gridTemplateColumns: gridTemplateColumnsString }}
                   >
-                    <div className="border-r border-border/70 bg-gray-100 dark:bg-neutral-900 px-5 py-2.5 font-bold tracking-wider text-muted-foreground">
+                    <div className="sticky left-0 z-50 flex items-center border-r border-border/70 bg-gray-100 dark:bg-neutral-900 px-5 font-bold tracking-wider text-muted-foreground backdrop-blur shadow-xs">
                       The Backbone
                     </div>
-                    {goalColumns.map((goal) => (
+                    {goalColumns.map((goal, goalIndex) => (
                       <div
                         key={goal.id}
-                        className="border-r border-border/70 bg-gray-100 dark:bg-neutral-900 px-5 py-2.5"
+                        className="flex items-center border-r border-border/70 bg-gray-100 dark:bg-neutral-900 px-5"
                         style={{ gridColumn: `${goal.start} / ${goal.end}` }}
                       >
-                        <div className="flex items-center gap-1.5 font-semibold text-sky-700 dark:text-sky-300">
-                          <Target className="h-3.5 w-3.5" />
-                          <span>{goal.title}</span>
+                        <div className="flex w-full items-center justify-between gap-2">
+                          <div className="flex min-w-0 items-center gap-1.5 font-semibold text-sky-700 dark:text-sky-300">
+                            <Target className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{goal.title}</span>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-0.5">
+                            <button
+                              type="button"
+                              aria-label="Move goal left"
+                              disabled={goalIndex === 0}
+                              onClick={() => moveGoal(goal.id, "left")}
+                              className="inline-flex h-5 w-5 items-center justify-center rounded border border-border/60 bg-background/60 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                              <ChevronLeft className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              aria-label="Move goal right"
+                              disabled={goalIndex === goalColumns.length - 1}
+                              onClick={() => moveGoal(goal.id, "right")}
+                              className="inline-flex h-5 w-5 items-center justify-center rounded border border-border/60 bg-background/60 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                              <ChevronRight className="h-3 w-3" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -705,10 +802,10 @@ export default function TasksPage() {
 
                   {/* ── Row 2: Feature Headers (sticky, light gray) ────────── */}
                   <div
-                    className="sticky top-[37px] z-30 grid border-b border-border/70 bg-gray-50 dark:bg-neutral-800/80"
+                    className="sticky top-10 z-30 grid h-12 border-b border-border/70 bg-gray-50 dark:bg-neutral-800/80"
                     style={{ gridTemplateColumns: gridTemplateColumnsString }}
                   >
-                    <div className="border-r border-border/70 bg-gray-50 dark:bg-neutral-800/80 px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <div className="sticky left-0 z-40 flex items-center border-r border-border/70 bg-gray-50 dark:bg-neutral-800/80 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur shadow-xs">
                       Sprints &amp; Actions
                     </div>
                     {goalColumns.map((goal) => {
@@ -719,20 +816,42 @@ export default function TasksPage() {
                         return (
                           <div
                             key={`empty-${goal.id}`}
-                            className="border-r border-border/70 px-5 py-3 bg-gray-50 dark:bg-neutral-800/80"
+                            className="border-r border-border/70 px-5 bg-gray-50 dark:bg-neutral-800/80"
                           />
                         );
                       }
-                      return goalFeatures.map((feature) => (
+                      return goalFeatures.map((feature, featureIndex) => (
                         <div
                           key={feature.id}
-                          className="border-r border-border/70 px-5 py-3 bg-gray-50 dark:bg-neutral-800/80"
+                          className="flex items-center border-r border-border/70 px-5 bg-gray-50 dark:bg-neutral-800/80"
                         >
-                          <div className="flex items-center gap-1.5 font-semibold text-primary/80">
-                            <Layers className="h-3.5 w-3.5 text-indigo-500/80" />
-                            <span className="text-sm tracking-tight">
-                              {feature.title}
-                            </span>
+                          <div className="flex w-full items-center justify-between gap-2">
+                            <div className="flex min-w-0 items-center gap-1.5 font-semibold text-primary/80">
+                              <Layers className="h-3.5 w-3.5 shrink-0 text-indigo-500/80" />
+                              <span className="truncate text-sm tracking-tight">
+                                {feature.title}
+                              </span>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-0.5">
+                              <button
+                                type="button"
+                                aria-label="Move feature left"
+                                disabled={featureIndex === 0}
+                                onClick={() => moveFeatureWithinGoal(goal.id, feature.id, "left")}
+                                className="inline-flex h-5 w-5 items-center justify-center rounded border border-border/60 bg-background/60 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                              >
+                                <ChevronLeft className="h-3 w-3" />
+                              </button>
+                              <button
+                                type="button"
+                                aria-label="Move feature right"
+                                disabled={featureIndex === goalFeatures.length - 1}
+                                onClick={() => moveFeatureWithinGoal(goal.id, feature.id, "right")}
+                                className="inline-flex h-5 w-5 items-center justify-center rounded border border-border/60 bg-background/60 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                              >
+                                <ChevronRight className="h-3 w-3" />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ));
@@ -786,7 +905,7 @@ export default function TasksPage() {
                       className="grid border-b border-border/60 bg-amber-50/70 dark:bg-amber-950/20"
                       style={{ gridTemplateColumns: gridTemplateColumnsString }}
                     >
-                      <div className="border-r border-border/70 px-5 py-2.5 flex items-center gap-2">
+                      <div className="sticky left-0 z-20 border-r border-border/70 bg-amber-50/70 dark:bg-amber-950/20 px-5 py-2.5 flex items-center gap-2 backdrop-blur shadow-xs">
                         <Archive className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                         <span className="text-xs font-bold tracking-wider uppercase text-amber-700 dark:text-amber-300">
                           Backlog

@@ -29,6 +29,12 @@ export function SiteHeader() {
           >
             Metrics
           </Button>
+          <Button
+            variant={pathname === "/agents" ? "default" : "ghost"}
+            onClick={() => router.push("/agents")}
+          >
+            Agents
+          </Button>
         </div>
       </div>
     </header>

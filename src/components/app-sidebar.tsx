@@ -14,7 +14,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, CameraIcon, FileTextIcon, Settings2Icon, CircleHelpIcon, SearchIcon, DatabaseIcon, FileChartColumnIcon, FileIcon, Building2 } from "lucide-react"
+import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, CameraIcon, FileTextIcon, Settings2Icon, CircleHelpIcon, SearchIcon, DatabaseIcon, FileChartColumnIcon, FileIcon, Building2, BotIcon } from "lucide-react"
 
 const data = {
   user: {
@@ -44,6 +44,14 @@ const data = {
       url: "/metrics",
       icon: (
         <ChartBarIcon
+        />
+      ),
+    },
+    {
+      title: "Agents",
+      url: "/agents",
+      icon: (
+        <BotIcon
         />
       ),
     },
