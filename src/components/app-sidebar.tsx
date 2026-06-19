@@ -32,6 +32,14 @@ const data = {
       ),
     },
     {
+      title: "Product Board",
+      url: "/product-board",
+      icon: (
+        <FileChartColumnIcon
+        />
+      ),
+    },
+    {
       title: "Tasks",
       url: "/tasks",
       icon: (

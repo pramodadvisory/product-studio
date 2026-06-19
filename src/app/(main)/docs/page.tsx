@@ -2,15 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -24,9 +16,9 @@ import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia, EmptyCont
 import { Badge } from "@/components/ui/badge";
 import { MeshGradient } from "@paper-design/shaders-react";
 import SimpleUserProfile from "@/components/blocks/application/user-profiles/simple";
-import { ElegantShape } from "@/components/ui/shape-landing-hero";
 import { CompetitorAnalysisChart } from "@/components/charts/competitor-analysis-chart";
 import { MarketshareChart } from "@/components/charts/marketshare";
+import { CreateProductModal, type CreateModalField } from "@/components/create-product-modal";
 
 const INDUSTRIES = [
   "SaaS",
@@ -39,6 +31,42 @@ const INDUSTRIES = [
   "Mobile App",
   "AI/ML",
   "Other",
+];
+
+const CREATE_FIELDS: CreateModalField[] = [
+  {
+    name: "productName",
+    label: "Product Name",
+    placeholder: "e.g., Customer Analytics Platform",
+    type: "input",
+    required: true,
+  },
+  {
+    name: "industry",
+    label: "Industry",
+    placeholder: "Select an industry",
+    type: "select",
+    required: true,
+    options: INDUSTRIES,
+  },
+  {
+    name: "targetUsers",
+    label: "Who is it for?",
+    placeholder: "e.g., Marketing teams, Product managers",
+    type: "input",
+  },
+  {
+    name: "purpose",
+    label: "Purpose & Vision",
+    placeholder: "What problem does this solve? What's the vision?",
+    type: "textarea",
+  },
+  {
+    name: "keyFeatures",
+    label: "Key Features",
+    placeholder: "What are the main features or capabilities?",
+    type: "textarea",
+  },
 ];
 
 const DUMMY_DOCS = {
@@ -85,28 +113,18 @@ export default function DocsPage() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editPrompt, setEditPrompt] = useState("");
   const [isEditLoading, setIsEditLoading] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<Record<string, string>>({
     productName: "",
+    industry: "",
     targetUsers: "",
     purpose: "",
     keyFeatures: "",
-    industry: "",
   });
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
+  const handleFieldChange = (name: string, value: string) => {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
-    }));
-  };
-
-  const handleIndustryChange = (value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      industry: value,
     }));
   };
 
@@ -151,7 +169,7 @@ export default function DocsPage() {
     }
   };
 
-  const isFormValid = formData.productName && formData.industry;
+  const isFormValid = Boolean(formData.productName && formData.industry);
 
   if (!docsGenerated) {
     return (
@@ -187,100 +205,18 @@ export default function DocsPage() {
         </div>
 
         {/* Create Docs Modal */}
-        <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Start Creating Documentation</DialogTitle>
-              <DialogDescription>
-                Provide some basic information about your product. We&apos;ll generate
-                comprehensive documentation.
-              </DialogDescription>
-            </DialogHeader>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Product Name */}
-              <div className="space-y-2">
-                <Label htmlFor="productName">Product Name *</Label>
-                <Input
-                  id="productName"
-                  name="productName"
-                  placeholder="e.g., Customer Analytics Platform"
-                  value={formData.productName}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-
-              {/* Industry */}
-              <div className="space-y-2">
-                <Label htmlFor="industry">Industry *</Label>
-                <Select value={formData.industry} onValueChange={(value) => handleIndustryChange(value || "")}>
-                  <SelectTrigger id="industry">
-                    <SelectValue placeholder="Select an industry" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {INDUSTRIES.map((industry) => (
-                      <SelectItem key={industry} value={industry}>
-                        {industry}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Target Users */}
-              <div className="space-y-2">
-                <Label htmlFor="targetUsers">Who is it for?</Label>
-                <Input
-                  id="targetUsers"
-                  name="targetUsers"
-                  placeholder="e.g., Marketing teams, Product managers"
-                  value={formData.targetUsers}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              {/* Purpose/Vision */}
-              <div className="space-y-2">
-                <Label htmlFor="purpose">Purpose & Vision</Label>
-                <textarea
-                  id="purpose"
-                  name="purpose"
-                  placeholder="What problem does this solve? What&apos;s the vision?"
-                  value={formData.purpose}
-                  onChange={handleInputChange}
-                  className="h-20 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
-                />
-              </div>
-
-              {/* Key Features */}
-              <div className="space-y-2">
-                <Label htmlFor="keyFeatures">Key Features</Label>
-                <textarea
-                  id="keyFeatures"
-                  name="keyFeatures"
-                  placeholder="What are the main features or capabilities?"
-                  value={formData.keyFeatures}
-                  onChange={handleInputChange}
-                  className="h-20 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
-                />
-              </div>
-
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setCreateModalOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={!isFormValid}>
-                  Create Documentation
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <CreateProductModal
+          open={createModalOpen}
+          onOpenChange={setCreateModalOpen}
+          title="Start Creating Documentation"
+          description="Provide some basic information about your product. We'll generate comprehensive documentation."
+          submitLabel="Create Documentation"
+          fields={CREATE_FIELDS}
+          formData={formData}
+          onFieldChange={handleFieldChange}
+          onSubmit={handleSubmit}
+          isValid={isFormValid}
+        />
       </div>
     );
   }
