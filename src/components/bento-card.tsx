@@ -31,7 +31,7 @@ export function BentoCard({
   return (
     <div
       className={cn(
-        "rounded-lg border bg-card p-6 hover:shadow-md transition-shadow flex flex-col",
+        "rounded-lg border bg-muted/50 p-6 hover:shadow-md transition-shadow flex flex-col",
         className
       )}
     >

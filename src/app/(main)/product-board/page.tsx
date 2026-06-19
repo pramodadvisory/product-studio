@@ -101,8 +101,7 @@ const DUMMY_PRODUCT_BOARD = {
       monthly_active_users: "500+",
       customer_retention: "85%+",
       nrr: "110%+",
-      cac_payback: "<12 months",
-      time_to_value: "<15 minutes"
+      cac_payback: "<12 months"
     },
     competitivePositioning: {
       vs_mixpanel: "Lower price, simpler UX, faster setup",
@@ -335,6 +334,16 @@ const DUMMY_PRODUCT_BOARD = {
   }
 };
 
+// Consolidated risk register: merges execution.risks with insights.potentialRisks,
+// deduping the overlapping "competitive response / competitor launches cheaper tier".
+const CONSOLIDATED_RISKS: { risk: string; impact: string; probability?: string; mitigation: string }[] = [
+  { risk: "Data privacy regulations", impact: "High", mitigation: "GDPR/CCPA compliance from day 1" },
+  { risk: "Competitor launches cheaper tier", impact: "High", probability: "Medium", mitigation: "Move fast; build switching costs via community & integrations" },
+  { risk: "Customer acquisition shortfall", impact: "High", mitigation: "Strong GTM, brand partnerships" },
+  { risk: "Data storage costs spike with scale", impact: "Medium", probability: "Medium", mitigation: "Invest in data compression, tiered storage" },
+  { risk: "Hard to hire skilled data engineers", impact: "Medium", probability: "Medium", mitigation: "Build ops team early, competitive comp" },
+];
+
 // Derived numeric data for charts (parsed from the dummy data above)
 const ARR_CHART_DATA = [
   { year: "Year 1", arr: 0.5, customers: 45 },
@@ -404,8 +413,8 @@ const COMPETITOR_CHART_CONFIG = {
 function ArrProjectionChart() {
   return (
     <BentoCard title="ARR Projection" icon={TrendingUp} iconClassName="text-green-600" description="3-year recurring revenue ($M)" className="h-full">
-      <div className="min-h-[200px] h-full">
-        <ChartContainer config={ARR_CHART_CONFIG} className="h-full min-h-[200px] w-full !aspect-auto">
+      <div className="flex h-full min-h-0 flex-col">
+        <ChartContainer config={ARR_CHART_CONFIG} className="min-h-[200px] w-full flex-1 !aspect-auto">
           <AreaChart accessibilityLayer data={ARR_CHART_DATA} margin={{ left: 4, right: 12, top: 8 }}>
             <CartesianGrid vertical={false} />
             <XAxis dataKey="year" tickLine={false} axisLine={false} tickMargin={8} />
@@ -420,8 +429,8 @@ function ArrProjectionChart() {
             <Area dataKey="arr" type="natural" fill="url(#fillArr)" stroke="var(--color-arr)" strokeWidth={2} />
           </AreaChart>
         </ChartContainer>
+        <p className="text-xs text-muted-foreground mt-3 shrink-0">15x ARR growth from Year 1 to Year 3</p>
       </div>
-      <p className="text-xs text-muted-foreground mt-3">15x ARR growth from Year 1 to Year 3</p>
     </BentoCard>
   );
 }
@@ -429,8 +438,8 @@ function ArrProjectionChart() {
 function CustomerGrowthChart() {
   return (
     <BentoCard title="Customer Growth" icon={Users} iconClassName="text-blue-600" description="Projected paying customers" className="h-full">
-      <div className="min-h-[200px] h-full">
-        <ChartContainer config={CUSTOMERS_CHART_CONFIG} className="h-full min-h-[200px] w-full !aspect-auto">
+      <div className="flex h-full min-h-0 flex-col">
+        <ChartContainer config={CUSTOMERS_CHART_CONFIG} className="min-h-[200px] w-full flex-1 !aspect-auto">
           <BarChart accessibilityLayer data={ARR_CHART_DATA} margin={{ left: 4, right: 12, top: 8 }}>
             <CartesianGrid vertical={false} />
             <XAxis dataKey="year" tickLine={false} axisLine={false} tickMargin={8} />
@@ -439,8 +448,8 @@ function CustomerGrowthChart() {
             <Bar dataKey="customers" fill="var(--color-customers)" radius={6} />
           </BarChart>
         </ChartContainer>
+        <p className="text-xs text-muted-foreground mt-3 shrink-0">Scaling to 500 customers by Year 3</p>
       </div>
-      <p className="text-xs text-muted-foreground mt-3">Scaling to 500 customers by Year 3</p>
     </BentoCard>
   );
 }
@@ -448,9 +457,9 @@ function CustomerGrowthChart() {
 function MarketShareTile() {
   return (
     <BentoCard title="Market Share" icon={BarChart3} iconClassName="text-blue-600" description="2024 Analytics Platform Market" className="h-full">
-      <div className="min-h-[200px] h-full">
-        <ChartContainer config={MARKETSHARE_CHART_CONFIG} className="h-full min-h-[200px] w-full !aspect-auto">
-          <BarChart accessibilityLayer data={MARKETSHARE_CHART_DATA} layout="vertical" margin={{ right: 16 }}>
+      <div className="flex h-full min-h-0 flex-col">
+        <ChartContainer config={MARKETSHARE_CHART_CONFIG} className="min-h-[200px] w-full flex-1 !aspect-auto">
+          <BarChart accessibilityLayer data={MARKETSHARE_CHART_DATA} layout="vertical" margin={{ left: 8, right: 40 }}>
             <CartesianGrid horizontal={false} />
             <YAxis dataKey="competitor" type="category" tickLine={false} tickMargin={10} axisLine={false} hide />
             <XAxis dataKey="share" type="number" hide />
@@ -461,8 +470,8 @@ function MarketShareTile() {
             </Bar>
           </BarChart>
         </ChartContainer>
+        <p className="text-xs text-muted-foreground mt-3 shrink-0">Showing market share by top competitors</p>
       </div>
-      <p className="text-xs text-muted-foreground mt-3">Showing market share by top competitors</p>
     </BentoCard>
   );
 }
@@ -470,24 +479,24 @@ function MarketShareTile() {
 function CompetitorRadarTile() {
   return (
     <BentoCard title="Competitor Analysis" icon={Target} iconClassName="text-green-600" description="Performance comparison across key metrics" className="h-full">
-      <div className="min-h-[200px] h-full">
-        <ChartContainer config={COMPETITOR_CHART_CONFIG} className="mx-auto aspect-square w-full">
-          <RadarChart data={COMPETITOR_CHART_DATA}>
+      <div className="flex h-full min-h-0 flex-col">
+        <ChartContainer config={COMPETITOR_CHART_CONFIG} className="mx-auto min-h-[200px] w-full flex-1 !aspect-auto">
+          <RadarChart data={COMPETITOR_CHART_DATA} margin={{ top: 16, right: 24, bottom: 16, left: 24 }}>
             <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-            <PolarAngleAxis dataKey="category" />
+            <PolarAngleAxis dataKey="category" tick={{ fontSize: 11 }} />
             <PolarGrid />
             <Radar name="Us" dataKey="us" stroke="#10b981" fill="#10b981" fillOpacity={0.6} dot={{ r: 4, fillOpacity: 1 }} />
             <Radar name="Mixpanel" dataKey="mixpanel" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} dot={{ r: 3, fillOpacity: 0.8 }} />
             <Radar name="Amplitude" dataKey="amplitude" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.3} dot={{ r: 3, fillOpacity: 0.8 }} />
           </RadarChart>
         </ChartContainer>
+        <p className="text-xs text-muted-foreground mt-3 shrink-0">Competitive advantage across 6 key dimensions</p>
       </div>
-      <p className="text-xs text-muted-foreground mt-3">Competitive advantage across 6 key dimensions</p>
     </BentoCard>
   );
 }
 
-type TabType = "overview" | "strategy" | "market" | "icp" | "product" | "financial" | "execution";
+type TabType = "overview" | "market" | "icp" | "product" | "financial" | "execution";
 
 export default function ProductBoardPage() {
   const [boardGenerated, setBoardGenerated] = useState(false);
@@ -604,14 +613,10 @@ export default function ProductBoardPage() {
         {/* Tabs */}
         <div className="flex-1 overflow-hidden flex flex-col">
           <Tabs defaultValue="overview" value={activeTab} onValueChange={(val) => setActiveTab(val as TabType)} className="flex-1 flex flex-col">
-            <TabsList className="grid w-full grid-cols-7 mb-6">
+            <TabsList className="grid w-full grid-cols-6 mb-6">
               <TabsTrigger value="overview" className="gap-2">
                 <Target className="h-4 w-4" />
                 <span className="hidden sm:inline">Overview</span>
-              </TabsTrigger>
-              <TabsTrigger value="strategy" className="gap-2">
-                <Zap className="h-4 w-4" />
-                <span className="hidden sm:inline">Strategy</span>
               </TabsTrigger>
               <TabsTrigger value="market" className="gap-2">
                 <BarChart3 className="h-4 w-4" />
@@ -638,176 +643,81 @@ export default function ProductBoardPage() {
             {/* Tab Contents */}
             <div className="flex-1 overflow-y-auto flex justify-center">
               <div className="w-full max-w-4xl px-4">
-              {/* Overview Tab - Bento Grid */}
+              {/* Overview + Strategy Tab - Bento Grid */}
               <TabsContent value="overview" className="pb-6">
                 <div className="grid grid-cols-1 lg:grid-cols-6 auto-rows-min gap-4">
-                  {/* Executive Summary */}
-                  <BentoCard title="Executive Summary" icon={Target} iconClassName="text-blue-600" className="lg:col-span-4 lg:row-span-2">
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {DUMMY_PRODUCT_BOARD.overview.executiveSummary}
-                    </p>
-                    <div className="mt-6 flex flex-wrap gap-2">
-                      <Badge variant="outline">{DUMMY_PRODUCT_BOARD.status}</Badge>
-                      <Badge variant="outline">{DUMMY_PRODUCT_BOARD.overview.keyMetrics.marketSize}</Badge>
-                      <Badge variant="outline">{DUMMY_PRODUCT_BOARD.overview.keyMetrics.growthRate}</Badge>
-                    </div>
-                  </BentoCard>
-
-                  {/* Key Metric stat cards */}
-                  {Object.entries(DUMMY_PRODUCT_BOARD.overview.keyMetrics).map(([key, value]) => (
-                    <div key={key} className="lg:col-span-1 rounded-lg border bg-card p-6 hover:shadow-md transition-shadow flex flex-col justify-between">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
-                      <p className="text-base font-bold leading-tight">{value}</p>
-                    </div>
-                  ))}
-
-                  {/* Timeline stepper */}
-                  <BentoCard title="Timeline" icon={Calendar} iconClassName="text-blue-600" className="lg:col-span-6">
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                      {Object.entries(DUMMY_PRODUCT_BOARD.overview.timeline).map(([phase, date], idx, arr) => (
-                        <div key={phase} className="relative pl-6">
-                          <span className="absolute left-0 top-1 h-3 w-3 rounded-full bg-blue-600 ring-4 ring-blue-100 dark:ring-blue-950" />
-                          {idx < arr.length - 1 && (
-                            <span className="absolute left-[5px] top-4 hidden lg:block h-0.5 w-[calc(100%+1rem)] bg-blue-200 dark:bg-blue-900" />
-                          )}
-                          <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">{phase.replace(/([A-Z])/g, ' $1').trim()}</p>
-                          <p className="text-sm font-bold">{date}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </BentoCard>
-                </div>
-              </TabsContent>
-
-              {/* Strategy Tab - Bento Grid */}
-              <TabsContent value="strategy" className="pb-6">
-                <div className="grid grid-cols-1 lg:grid-cols-6 auto-rows-min gap-4">
-                  {/* Vision */}
-                  <BentoCard title="Vision" icon={Compass} iconClassName="text-purple-600" className="lg:col-span-3">
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {DUMMY_PRODUCT_BOARD.strategy.vision}
-                    </p>
-                  </BentoCard>
-
-                  {/* Mission */}
-                  <BentoCard title="Mission Statement" icon={Rocket} iconClassName="text-blue-600" className="lg:col-span-3">
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {DUMMY_PRODUCT_BOARD.strategy.missionStatement}
-                    </p>
-                  </BentoCard>
-
-                  {/* KPI stat cards */}
-                  {Object.entries(DUMMY_PRODUCT_BOARD.strategy.kpis).map(([metric, value]) => (
-                    <div key={metric} className="lg:col-span-2 rounded-lg border bg-card p-6 hover:shadow-md transition-shadow text-center">
-                      <p className="text-2xl font-bold mb-1">{value}</p>
-                      <p className="text-xs font-semibold text-muted-foreground uppercase">{metric.replace(/_/g, ' ')}</p>
-                    </div>
-                  ))}
-
-                  {/* GTM Strategy */}
-                  <BentoCard title="Go-to-Market Strategy" icon={Zap} iconClassName="text-amber-600" className="lg:col-span-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <h4 className="text-sm font-bold mb-3">Channels</h4>
-                        <ul className="space-y-2">
-                          {DUMMY_PRODUCT_BOARD.strategy.gtmStrategy.channels.map((channel, idx) => (
-                            <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
-                              <span className="text-green-600 font-bold">→</span>
-                              <span>{channel}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold mb-3">Target Segments</h4>
-                        <ul className="space-y-2">
-                          {DUMMY_PRODUCT_BOARD.strategy.gtmStrategy.targetSegments.map((segment, idx) => (
-                            <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
-                              <span className="text-blue-600 font-bold">◆</span>
-                              <span>{segment}</span>
-                            </li>
-                          ))}
-                        </ul>
+                  {/* Executive Summary — left, tall */}
+                  <BentoCard title="Executive Summary" icon={Target} iconClassName="text-blue-600" className="lg:col-span-3 lg:row-span-2">
+                    <div className="flex flex-col justify-between h-full">
+                      <p className="text-muted-foreground leading-relaxed" style={{ fontSize: "clamp(0.95rem, 1.8vw, 1.35rem)" }}>
+                        {DUMMY_PRODUCT_BOARD.overview.executiveSummary}
+                      </p>
+                      <div className="mt-6">
+                        <Badge variant="outline">{DUMMY_PRODUCT_BOARD.status}</Badge>
                       </div>
                     </div>
                   </BentoCard>
 
-                  {/* Positioning highlight */}
-                  <div className="lg:col-span-2 rounded-lg border bg-card p-6 hover:shadow-md transition-shadow flex flex-col justify-center">
-                    <h4 className="text-sm font-bold mb-2">Positioning</h4>
-                    <p className="text-lg font-semibold text-purple-600 leading-snug">{DUMMY_PRODUCT_BOARD.strategy.gtmStrategy.positioning}</p>
+                  {/* Vision — top right */}
+                  <div className="lg:col-span-3 rounded-lg border hover:shadow-md transition-shadow relative overflow-hidden flex flex-col">
+                    <div className="absolute inset-0 z-0">
+                      <MeshGradient
+                        style={{ height: "100%", width: "100%" }}
+                        distortion={0.8}
+                        swirl={0.1}
+                        offsetX={0}
+                        offsetY={0}
+                        scale={1}
+                        rotation={0}
+                        speed={1}
+                        colors={["hsl(216, 30%, 10%)", "hsl(243, 25%, 30%)", "hsl(205, 20%, 35%)", "hsl(211, 20%, 13%)"]}
+                      />
+                    </div>
+                    <div className="relative z-10 flex flex-col flex-1 p-6">
+                      <div className="flex items-center gap-2.5 mb-4">
+                        <Compass className="h-5 w-5 mt-0.5 shrink-0 text-purple-300" />
+                        <h3 className="text-lg font-semibold text-white">Vision</h3>
+                      </div>
+                      <p className="text-base font-medium text-white/90 leading-relaxed flex-1">
+                        {DUMMY_PRODUCT_BOARD.strategy.vision}
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Competitive Positioning */}
-                  <BentoCard title="Competitive Positioning" icon={BarChart3} iconClassName="text-purple-600" className="lg:col-span-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {Object.entries(DUMMY_PRODUCT_BOARD.strategy.competitivePositioning).map(([competitor, position]) => (
-                        <div key={competitor} className="border rounded-lg p-4">
-                          <p className="text-sm font-bold mb-2 capitalize">{competitor.replace(/_/g, ' ')}</p>
-                          <p className="text-sm text-muted-foreground">{position}</p>
-                        </div>
-                      ))}
+                  {/* Mission Statement — bottom right */}
+                  <div className="lg:col-span-3 rounded-lg border hover:shadow-md transition-shadow relative overflow-hidden flex flex-col">
+                    <div className="absolute inset-0 z-0">
+                      <MeshGradient
+                        style={{ height: "100%", width: "100%" }}
+                        distortion={0.8}
+                        swirl={0.1}
+                        offsetX={0}
+                        offsetY={0}
+                        scale={1}
+                        rotation={0}
+                        speed={1}
+                        colors={["hsl(150, 40%, 8%)", "hsl(160, 35%, 18%)", "hsl(140, 30%, 14%)", "hsl(155, 40%, 10%)"]}
+                      />
                     </div>
-                  </BentoCard>
-
-                  {/* Strategic Insights divider */}
-                  <div className="lg:col-span-6 mt-2"><h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Strategic Insights</h2></div>
-
-                  {/* Key Opportunities */}
-                  <BentoCard title="Key Opportunities" icon={Lightbulb} iconClassName="text-green-600" className="lg:col-span-3">
-                    <ul className="space-y-3">
-                      {DUMMY_PRODUCT_BOARD.insights.keyOpportunities.map((opp, idx) => (
-                        <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2 p-3 bg-green-50 dark:bg-green-950 rounded-lg">
-                          <span className="text-green-600 font-bold">✦</span>
-                          <span>{opp}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </BentoCard>
-
-                  {/* Growth Strategies */}
-                  <BentoCard title="Growth Strategies" icon={ArrowUpRight} iconClassName="text-purple-600" className="lg:col-span-3">
-                    <ul className="space-y-3">
-                      {DUMMY_PRODUCT_BOARD.insights.growthStrategies.map((strategy, idx) => (
-                        <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2 p-3 bg-purple-50 dark:bg-purple-950 rounded-lg">
-                          <span className="text-purple-600 font-bold">→</span>
-                          <span>{strategy}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </BentoCard>
-
-                  {/* Market Gaps */}
-                  <BentoCard title="Market Gaps" icon={Target} iconClassName="text-blue-600" className="lg:col-span-2">
-                    <ul className="space-y-3">
-                      {DUMMY_PRODUCT_BOARD.insights.marketGaps.map((gap, idx) => (
-                        <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                          <span className="text-blue-600 font-bold">◇</span>
-                          <span>{gap}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </BentoCard>
-
-                  {/* Potential Risks */}
-                  <BentoCard title="Potential Risks" icon={ShieldAlert} iconClassName="text-red-600" className="lg:col-span-4">
-                    <div className="space-y-3">
-                      {DUMMY_PRODUCT_BOARD.insights.potentialRisks.map((risk, idx) => (
-                        <div key={idx} className="border rounded-lg p-4 bg-red-50 dark:bg-red-950">
-                          <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
-                            <h4 className="font-semibold text-sm">{risk.risk}</h4>
-                            <div className="flex gap-2 shrink-0">
-                              <Badge variant="secondary">{risk.probability} prob</Badge>
-                              <Badge variant="destructive">{risk.impact} impact</Badge>
-                            </div>
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            <span className="font-medium">Mitigation:</span> {risk.mitigation}
-                          </p>
-                        </div>
-                      ))}
+                    <div className="relative z-10 flex flex-col flex-1 p-6">
+                      <div className="flex items-center gap-2.5 mb-4">
+                        <Rocket className="h-5 w-5 mt-0.5 shrink-0 text-green-300" />
+                        <h3 className="text-lg font-semibold text-white">Mission Statement</h3>
+                      </div>
+                      <p className="text-base font-medium text-white/90 leading-relaxed flex-1">
+                        {DUMMY_PRODUCT_BOARD.strategy.missionStatement}
+                      </p>
                     </div>
-                  </BentoCard>
+                  </div>
+
+                  {/* Market & revenue headline stats — 3 per row */}
+                  {(["marketSize", "revenueTarget", "growthRate"] as const).map((key) => (
+                    <div key={key} className="lg:col-span-2 rounded-lg border bg-muted/50 p-6 hover:shadow-md transition-shadow flex flex-col justify-between">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
+                      <p className="text-2xl font-bold leading-tight">{DUMMY_PRODUCT_BOARD.overview.keyMetrics[key]}</p>
+                    </div>
+                  ))}
+
                 </div>
               </TabsContent>
 
@@ -896,32 +806,35 @@ export default function ProductBoardPage() {
                   <BentoCard title="Key Decision Makers" icon={Users} iconClassName="text-purple-600" className="lg:col-span-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                       {DUMMY_PRODUCT_BOARD.icp.decisionMakers.map((maker, idx) => (
-                        <div key={idx} className="border rounded-lg p-4">
-                          <div className="flex items-center justify-between mb-2 gap-2">
-                            <h4 className="font-semibold">{maker.role}</h4>
-                            <Badge variant={maker.influence === 'High' ? 'default' : 'secondary'} className="shrink-0">
-                              {maker.influence}
-                            </Badge>
+                        <div key={idx} className="border rounded-lg relative overflow-hidden">
+                          {/* Background Shader */}
+                          <div className="absolute inset-0 z-0">
+                            <MeshGradient
+                              style={{ height: "100%", width: "100%" }}
+                              distortion={0.8}
+                              swirl={0.1}
+                              offsetX={0}
+                              offsetY={0}
+                              scale={1}
+                              rotation={0}
+                              speed={1}
+                              colors={["hsl(216, 30%, 10%)", "hsl(243, 25%, 30%)", "hsl(205, 20%, 35%)", "hsl(211, 20%, 13%)"]}
+                            />
                           </div>
-                          <p className="text-sm text-muted-foreground">{maker.concern}</p>
+                          <div className="relative z-10 p-4">
+                            <div className="flex items-center justify-between mb-2 gap-2">
+                              <h4 className="font-semibold text-white">{maker.role}</h4>
+                              <Badge variant={maker.influence === 'High' ? 'default' : 'secondary'} className="shrink-0">
+                                {maker.influence}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-white/80">{maker.concern}</p>
+                          </div>
                         </div>
                       ))}
                     </div>
                   </BentoCard>
 
-                  {/* Target Personas */}
-                  {DUMMY_PRODUCT_BOARD.marketAnalysis.targetCustomerPersonas.map((persona, idx) => (
-                    <BentoCard key={idx} title={persona.name} icon={Users} iconClassName="text-blue-600" className="lg:col-span-3">
-                      <div className="flex justify-end mb-3">
-                        <Badge variant="secondary" className="shrink-0">{persona.budget}</Badge>
-                      </div>
-                      <div className="space-y-2 text-sm text-muted-foreground">
-                        <p><span className="font-medium text-foreground">Company:</span> {persona.company}</p>
-                        <p><span className="font-medium text-foreground">Pain Points:</span> {persona.pain_points}</p>
-                        <p><span className="font-medium text-foreground">Goals:</span> {persona.goals}</p>
-                      </div>
-                    </BentoCard>
-                  ))}
                 </div>
               </TabsContent>
 
@@ -966,26 +879,93 @@ export default function ProductBoardPage() {
                     </div>
                   </BentoCard>
 
-                  {/* Competitive Landscape */}
+                  {/* Competitive Landscape — merged with our head-to-head positioning */}
                   <BentoCard title="Competitive Landscape" icon={BarChart3} iconClassName="text-purple-600" className="lg:col-span-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {DUMMY_PRODUCT_BOARD.marketAnalysis.competitiveLandscape.map((competitor, idx) => (
-                        <div key={idx} className="border rounded-lg p-4">
-                          <h4 className="font-semibold mb-2">{competitor.name}</h4>
-                          <div className="space-y-2 text-sm">
-                            <div>
-                              <p className="text-xs font-semibold text-green-600 mb-0.5">STRENGTH</p>
-                              <p className="text-muted-foreground">{competitor.strength}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs font-semibold text-red-600 mb-0.5">WEAKNESS</p>
-                              <p className="text-muted-foreground">{competitor.weakness}</p>
+                      {DUMMY_PRODUCT_BOARD.marketAnalysis.competitiveLandscape.map((competitor, idx) => {
+                        const positioningKey = `vs_${competitor.name.toLowerCase()}` as keyof typeof DUMMY_PRODUCT_BOARD.strategy.competitivePositioning;
+                        const ourEdge = DUMMY_PRODUCT_BOARD.strategy.competitivePositioning[positioningKey];
+                        return (
+                          <div key={idx} className="border rounded-lg p-4">
+                            <h4 className="font-semibold mb-2">{competitor.name}</h4>
+                            <div className="space-y-2 text-sm">
+                              <div>
+                                <p className="text-xs font-semibold text-green-600 mb-0.5">STRENGTH</p>
+                                <p className="text-muted-foreground">{competitor.strength}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-semibold text-red-600 mb-0.5">WEAKNESS</p>
+                                <p className="text-muted-foreground">{competitor.weakness}</p>
+                              </div>
+                              {ourEdge && (
+                                <div>
+                                  <p className="text-xs font-semibold text-purple-600 mb-0.5">OUR EDGE</p>
+                                  <p className="text-muted-foreground">{ourEdge}</p>
+                                </div>
+                              )}
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </BentoCard>
+
+                  {/* Go-to-Market Strategy */}
+                  <BentoCard title="Go-to-Market Strategy" icon={Zap} iconClassName="text-amber-600" className="lg:col-span-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <h4 className="text-sm font-bold mb-3">Channels</h4>
+                        <ul className="space-y-2">
+                          {DUMMY_PRODUCT_BOARD.strategy.gtmStrategy.channels.map((channel, idx) => (
+                            <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
+                              <span className="text-green-600 font-bold">→</span>
+                              <span>{channel}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold mb-3">Target Segments</h4>
+                        <ul className="space-y-2">
+                          {DUMMY_PRODUCT_BOARD.strategy.gtmStrategy.targetSegments.map((segment, idx) => (
+                            <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
+                              <span className="text-blue-600 font-bold">◆</span>
+                              <span>{segment}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </BentoCard>
+
+                  {/* Positioning + Market Gaps */}
+                  <div className="lg:col-span-2 rounded-lg border bg-muted/50 p-6 hover:shadow-md transition-shadow flex flex-col justify-center">
+                    <h4 className="text-sm font-bold mb-2">Positioning</h4>
+                    <p className="text-lg font-semibold text-purple-600 leading-snug mb-6">{DUMMY_PRODUCT_BOARD.strategy.gtmStrategy.positioning}</p>
+                    <h4 className="text-sm font-bold mb-2">Market Gaps</h4>
+                    <ul className="space-y-2">
+                      {DUMMY_PRODUCT_BOARD.insights.marketGaps.map((gap, idx) => (
+                        <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
+                          <span className="text-blue-600 font-bold">◇</span>
+                          <span>{gap}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Target Personas — moved from ICP (market analysis data) */}
+                  {DUMMY_PRODUCT_BOARD.marketAnalysis.targetCustomerPersonas.map((persona, idx) => (
+                    <BentoCard key={idx} title={persona.name} icon={Users} iconClassName="text-blue-600" className="lg:col-span-3">
+                      <div className="flex justify-end mb-3">
+                        <Badge variant="secondary" className="shrink-0">{persona.budget}</Badge>
+                      </div>
+                      <div className="space-y-2 text-sm text-muted-foreground">
+                        <p><span className="font-medium text-foreground">Company:</span> {persona.company}</p>
+                        <p><span className="font-medium text-foreground">Pain Points:</span> {persona.pain_points}</p>
+                        <p><span className="font-medium text-foreground">Goals:</span> {persona.goals}</p>
+                      </div>
+                    </BentoCard>
+                  ))}
                 </div>
               </TabsContent>
 
@@ -1039,6 +1019,30 @@ export default function ProductBoardPage() {
                       ))}
                     </div>
                   </BentoCard>
+
+                  {/* Key Opportunities — moved from Overview (product roadmap-facing) */}
+                  <BentoCard title="Key Opportunities" icon={Lightbulb} iconClassName="text-green-600" className="lg:col-span-3">
+                    <ul className="space-y-3">
+                      {DUMMY_PRODUCT_BOARD.insights.keyOpportunities.map((opp, idx) => (
+                        <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2 p-3 bg-green-50 dark:bg-green-950 rounded-lg">
+                          <span className="text-green-600 font-bold">✦</span>
+                          <span>{opp}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </BentoCard>
+
+                  {/* Growth Strategies — moved from Overview (product roadmap-facing) */}
+                  <BentoCard title="Growth Strategies" icon={ArrowUpRight} iconClassName="text-purple-600" className="lg:col-span-3">
+                    <ul className="space-y-3">
+                      {DUMMY_PRODUCT_BOARD.insights.growthStrategies.map((strategy, idx) => (
+                        <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2 p-3 bg-purple-50 dark:bg-purple-950 rounded-lg">
+                          <span className="text-purple-600 font-bold">→</span>
+                          <span>{strategy}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </BentoCard>
                 </div>
               </TabsContent>
 
@@ -1047,8 +1051,17 @@ export default function ProductBoardPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-6 auto-rows-min gap-4">
                   {/* Unit economics stat cards */}
                   {Object.entries(DUMMY_PRODUCT_BOARD.financial.unitEconomics).map(([metric, value]) => (
-                    <div key={metric} className="lg:col-span-2 rounded-lg border bg-card p-6 hover:shadow-md transition-shadow text-center">
+                    <div key={metric} className="lg:col-span-2 rounded-lg border bg-muted/50 p-6 hover:shadow-md transition-shadow text-center">
                       <DollarSign className="h-5 w-5 text-green-600 mx-auto mb-2" />
+                      <p className="text-2xl font-bold mb-1">{value}</p>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">{metric.replace(/_/g, ' ')}</p>
+                    </div>
+                  ))}
+
+                  {/* KPI targets — operational performance goals */}
+                  {Object.entries(DUMMY_PRODUCT_BOARD.strategy.kpis).map(([metric, value]) => (
+                    <div key={metric} className="lg:col-span-2 rounded-lg border bg-muted/50 p-6 hover:shadow-md transition-shadow text-center">
+                      <Target className="h-5 w-5 text-blue-600 mx-auto mb-2" />
                       <p className="text-2xl font-bold mb-1">{value}</p>
                       <p className="text-xs font-semibold text-muted-foreground uppercase">{metric.replace(/_/g, ' ')}</p>
                     </div>
@@ -1170,16 +1183,17 @@ export default function ProductBoardPage() {
                     </BentoCard>
                   </div>
 
-                  {/* Risks */}
+                  {/* Risks & Mitigations — consolidated execution + strategic risks, deduped */}
                   <BentoCard title="Risks & Mitigations" icon={ShieldAlert} iconClassName="text-red-600" className="lg:col-span-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      {DUMMY_PRODUCT_BOARD.execution.risks.map((risk, idx) => (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {CONSOLIDATED_RISKS.map((risk, idx) => (
                         <div key={idx} className="border rounded-lg p-4">
                           <div className="flex items-start gap-2 mb-3">
                             <h4 className="font-semibold flex-1 text-sm">{risk.risk}</h4>
-                            <Badge variant={risk.impact === 'High' ? 'destructive' : 'secondary'} className="shrink-0">
-                              {risk.impact}
-                            </Badge>
+                            <div className="flex flex-col items-end gap-1 shrink-0">
+                              <Badge variant={risk.impact === 'High' ? 'destructive' : 'secondary'}>{risk.impact} impact</Badge>
+                              {risk.probability && <Badge variant="outline" className="text-xs">{risk.probability} prob</Badge>}
+                            </div>
                           </div>
                           <p className="text-sm text-muted-foreground">
                             <span className="font-medium">Mitigation:</span> {risk.mitigation}
