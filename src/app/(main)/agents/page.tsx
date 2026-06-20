@@ -22,11 +22,14 @@ import {
 import { CreateAgentDialog } from "@/components/agents/create-agent-dialog"
 import { AgentChatSheet } from "@/components/agents/agent-chat-sheet"
 import { useAgents, type Agent } from "@/hooks/use-agents"
+import { useHeaderTitle } from "@/components/header-title-context"
 
 export default function AgentsPage() {
   const { agents, createAgent, deleteAgent, hydrated } = useAgents()
   const [activeAgent, setActiveAgent] = React.useState<Agent | null>(null)
   const [chatOpen, setChatOpen] = React.useState(false)
+
+  useHeaderTitle("Agents")
 
   function openChat(agent: Agent) {
     setActiveAgent(agent)
@@ -35,15 +38,7 @@ export default function AgentsPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 pt-4 lg:px-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-heading text-xl font-semibold tracking-tight">
-            Agents
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Build assistants that take repetitive work off your plate.
-          </p>
-        </div>
+      <div className="flex flex-wrap items-end justify-end gap-3">
         <CreateAgentDialog onCreate={createAgent} />
       </div>
 

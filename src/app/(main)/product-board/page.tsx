@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useHeaderTitle } from "@/components/header-title-context";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sparkles, Download, Share2, Plus, TrendingUp, BarChart3, Users, Target, Zap, Calendar, AlertCircle, Rocket, Lightbulb, ShieldAlert, ListChecks, DollarSign, Compass, CheckCircle2, ArrowUpRight, Building2 } from "lucide-react";
@@ -500,6 +501,7 @@ type TabType = "overview" | "market" | "icp" | "product" | "financial" | "execut
 
 export default function ProductBoardPage() {
   const [boardGenerated, setBoardGenerated] = useState(false);
+  useHeaderTitle(boardGenerated ? DUMMY_PRODUCT_BOARD.productName : "Product Board")
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [formData, setFormData] = useState<Record<string, string>>({
@@ -541,12 +543,6 @@ export default function ProductBoardPage() {
     return (
       <div className="flex flex-1 flex-col overflow-hidden">
         <div className="flex-1 overflow-hidden flex flex-col p-4 lg:p-6">
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-2">Product Board</h1>
-            <p className="text-muted-foreground">
-              Generate a comprehensive product board with market analysis, strategy, and execution plan
-            </p>
-          </div>
 
           <Empty>
             <EmptyHeader>
@@ -586,14 +582,10 @@ export default function ProductBoardPage() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <div className="flex-1 overflow-hidden flex flex-col p-4 lg:p-6">
-        {/* Header */}
-        <div className="mb-6 flex items-start justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">{DUMMY_PRODUCT_BOARD.productName}</h1>
-            <p className="text-muted-foreground text-sm">
-              Status: <Badge className="ml-2">{DUMMY_PRODUCT_BOARD.status}</Badge>
-            </p>
-          </div>
+        <div className="mb-6 flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Status: <Badge className="ml-2">{DUMMY_PRODUCT_BOARD.status}</Badge>
+          </p>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" className="gap-2">
               <Download className="h-4 w-4" />

@@ -128,3 +128,33 @@
     @apply font-sans;
   }
 }
+
+/* Document editor (contentEditable) typography. */
+.doc-prose:empty::before {
+  content: "Start writing, or ask the AI assistant to draft this document…";
+  @apply text-muted-foreground;
+}
+.doc-prose h1 {
+  @apply mb-3 mt-5 text-2xl font-bold first:mt-0;
+}
+.doc-prose h2 {
+  @apply mb-2 mt-5 text-xl font-semibold first:mt-0;
+}
+.doc-prose p {
+  @apply my-2;
+}
+.doc-prose ul {
+  @apply my-2 list-disc pl-6;
+}
+.doc-prose ol {
+  @apply my-2 list-decimal pl-6;
+}
+.doc-prose li {
+  @apply my-0.5;
+}
+.doc-prose blockquote {
+  @apply my-3 border-l-2 border-border pl-4 italic text-muted-foreground;
+}
+.doc-prose a {
+  @apply text-primary underline;
+}

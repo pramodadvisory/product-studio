@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useHeaderTitle } from "@/components/header-title-context";
 import {
   closestCorners,
   DndContext,
@@ -392,6 +393,7 @@ function SortableStoryCard({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function TasksPage() {
+  useHeaderTitle("Tasks & Story Map")
   const [goals, setGoals] = useState<Goal[]>(initialGoals);
   const [features, setFeatures] = useState<Feature[]>(initialFeatures);
   const [sprints, setSprints] = useState<Sprint[]>(initialSprints);
@@ -641,17 +643,7 @@ export default function TasksPage() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <div className="flex flex-1 min-h-0 flex-col overflow-hidden p-4 lg:p-6">
-        {/* Page header */}
-        <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <div>
-            <h1 className="text-4xl font-bold mb-1 tracking-tight">
-              Tasks &amp; Story Map
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Define the user journey backbone with goals and features, and map
-              user stories to implementation sprints.
-            </p>
-          </div>
+        <div className="mb-6 flex flex-wrap items-center justify-end gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
