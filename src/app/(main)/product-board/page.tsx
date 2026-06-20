@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useHeaderTitle } from "@/components/header-title-context";
+import { useHeaderTitle, HeaderActions } from "@/components/header-title-context";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sparkles, Download, Share2, Plus, TrendingUp, BarChart3, Users, Target, Zap, Calendar, AlertCircle, Rocket, Lightbulb, ShieldAlert, ListChecks, DollarSign, Compass, CheckCircle2, ArrowUpRight, Building2 } from "lucide-react";
@@ -581,25 +581,25 @@ export default function ProductBoardPage() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
+      <HeaderActions>
+        <Button variant="outline" size="sm" className="gap-2">
+          <Download className="h-4 w-4" />
+          Export
+        </Button>
+        <Button variant="outline" size="sm" className="gap-2">
+          <Share2 className="h-4 w-4" />
+          Share
+        </Button>
+        <Button size="sm" className="gap-2" onClick={() => setBoardGenerated(false)}>
+          <Plus className="h-4 w-4" />
+          New Board
+        </Button>
+      </HeaderActions>
       <div className="flex-1 overflow-hidden flex flex-col p-4 lg:p-6">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-4">
           <p className="text-sm text-muted-foreground">
             Status: <Badge className="ml-2">{DUMMY_PRODUCT_BOARD.status}</Badge>
           </p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-2">
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Share2 className="h-4 w-4" />
-              Share
-            </Button>
-            <Button size="sm" className="gap-2" onClick={() => setBoardGenerated(false)}>
-              <Plus className="h-4 w-4" />
-              New Board
-            </Button>
-          </div>
         </div>
 
         {/* Tabs */}

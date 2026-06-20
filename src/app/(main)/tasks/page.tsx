@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useHeaderTitle } from "@/components/header-title-context";
+import { useHeaderTitle, HeaderActions } from "@/components/header-title-context";
 import {
   closestCorners,
   DndContext,
@@ -642,53 +642,35 @@ export default function TasksPage() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
+      <HeaderActions>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setActiveModal("sprint")}>
+          <Plus className="h-3.5 w-3.5" />
+          Sprint
+        </Button>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setActiveModal("goal")}>
+          <Target className="h-3.5 w-3.5 text-sky-600" />
+          Goal
+        </Button>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setActiveModal("feature")}>
+          <Layers className="h-3.5 w-3.5 text-indigo-600" />
+          Feature
+        </Button>
+        <Button
+          size="sm"
+          className="gap-1.5 shadow-sm"
+          onClick={() => {
+            if (goals.length === 0 || features.length === 0) {
+              alert("Please add at least one Goal and Feature first!");
+              return;
+            }
+            setActiveModal("story");
+          }}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add Story
+        </Button>
+      </HeaderActions>
       <div className="flex flex-1 min-h-0 flex-col overflow-hidden p-4 lg:p-6">
-        <div className="mb-6 flex flex-wrap items-center justify-end gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => setActiveModal("sprint")}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Sprint
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => setActiveModal("goal")}
-            >
-              <Target className="h-3.5 w-3.5 text-sky-600" />
-              Goal
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => setActiveModal("feature")}
-            >
-              <Layers className="h-3.5 w-3.5 text-indigo-600" />
-              Feature
-            </Button>
-            <Button
-              size="sm"
-              className="gap-1.5 shadow-sm"
-              onClick={() => {
-                if (goals.length === 0 || features.length === 0) {
-                  alert("Please add at least one Goal and Feature first!");
-                  return;
-                }
-                setActiveModal("story");
-              }}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Add Story
-            </Button>
-          </div>
-        </div>
-
         {/* Story Mapping Board */}
         <DndContext
           sensors={sensors}

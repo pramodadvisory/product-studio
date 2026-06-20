@@ -22,7 +22,7 @@ import {
 import { CreateAgentDialog } from "@/components/agents/create-agent-dialog"
 import { AgentChatSheet } from "@/components/agents/agent-chat-sheet"
 import { useAgents, type Agent } from "@/hooks/use-agents"
-import { useHeaderTitle } from "@/components/header-title-context"
+import { useHeaderTitle, HeaderActions } from "@/components/header-title-context"
 
 export default function AgentsPage() {
   const { agents, createAgent, deleteAgent, hydrated } = useAgents()
@@ -38,9 +38,9 @@ export default function AgentsPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 pt-4 lg:px-6">
-      <div className="flex flex-wrap items-end justify-end gap-3">
+      <HeaderActions>
         <CreateAgentDialog onCreate={createAgent} />
-      </div>
+      </HeaderActions>
 
       {hydrated && agents.length === 0 ? (
         <Empty className="flex-1 border">

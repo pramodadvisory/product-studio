@@ -1,12 +1,14 @@
 "use client"
 
 import * as React from "react"
+import { Download, Share2, FilePlus } from "lucide-react"
 
 import { useDocs, type DocNode } from "@/hooks/use-docs"
 import { FileTree } from "@/components/docs/file-tree"
 import { DocEditor } from "@/components/docs/doc-editor"
 import { DocsChat } from "@/components/docs/docs-chat"
-import { useHeaderTitle } from "@/components/header-title-context"
+import { useHeaderTitle, HeaderActions } from "@/components/header-title-context"
+import { Button } from "@/components/ui/button"
 
 export default function DocsPage() {
   const {
@@ -47,6 +49,33 @@ export default function DocsPage() {
 
   return (
     <div className="flex flex-1 overflow-hidden">
+      <HeaderActions>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          onClick={() => {
+            const node = createNode({ type: "file", name: "Untitled.md", parentId: null, content: "" })
+            setSelectedId(node.id)
+          }}
+        >
+          <FilePlus className="h-4 w-4" />
+          New Doc
+        </Button>
+        {selectedDoc && (
+          <>
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <Download className="h-4 w-4" />
+              Export
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <Share2 className="h-4 w-4" />
+              Share
+            </Button>
+          </>
+        )}
+      </HeaderActions>
+
       {/* Left pane — file tree */}
       <aside className="hidden w-60 shrink-0 border-r md:block">
         <FileTree
