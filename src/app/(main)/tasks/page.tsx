@@ -1,30 +1,35 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useHeaderTitle, HeaderActions } from "@/components/header-title-context";
 import {
   closestCorners,
+  pointerWithin,
   DndContext,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
   useDroppable,
+  DragOverlay,
+  type CollisionDetection,
   type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
-  arrayMove,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -34,214 +39,58 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Archive,
+  ArrowLeftRight,
   CalendarRange,
   ChevronLeft,
   ChevronRight,
   Flag,
   GripVertical,
+  Inbox,
   Layers,
+  MoreVertical,
   Plus,
   Target,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-const BACKLOG_SPRINT_ID = "backlog";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-type Goal = {
-  id: string;
-  title: string;
-};
-
-type Feature = {
-  id: string;
-  title: string;
-  goalId: string;
-};
-
-type Sprint = {
-  id: string;
-  name: string;
-  window: string;
-};
-
-type StoryItem = {
-  id: string;
-  text: string;
-  status?: "todo" | "in-progress" | "done" | "blocked";
-  priority?: "low" | "medium" | "high";
-  storyPoints?: number;
-  storyKey?: string;
-  assignee?: string;
-};
-
-type StoriesByCell = Record<string, StoryItem[]>;
-
-function cellKey(sprintId: string, featureId: string) {
-  return `${sprintId}::${featureId}`;
-}
-
-// ─── Seed Data ────────────────────────────────────────────────────────────────
-const initialGoals: Goal[] = [
-  { id: "goal-1", title: "User Authentication" },
-  { id: "goal-2", title: "Account Setup" },
-  { id: "goal-3", title: "Data Integration" },
-  { id: "goal-4", title: "First Success" },
-];
-
-const initialFeatures: Feature[] = [
-  { id: "feature-1", title: "Sign up & login", goalId: "goal-1" },
-  { id: "feature-2", title: "Email verification", goalId: "goal-1" },
-  { id: "feature-3", title: "Create workspace", goalId: "goal-2" },
-  { id: "feature-4", title: "Invite team members", goalId: "goal-2" },
-  { id: "feature-5", title: "Connect data source", goalId: "goal-3" },
-  { id: "feature-6", title: "Map data fields", goalId: "goal-3" },
-  { id: "feature-7", title: "Create dashboard", goalId: "goal-4" },
-  { id: "feature-8", title: "Set up alerts", goalId: "goal-4" },
-];
-
-const initialSprints: Sprint[] = [
-  { id: "sprint-1", name: "Sprint 1", window: "Week 1-2" },
-  { id: "sprint-2", name: "Sprint 2", window: "Week 3-4" },
-  { id: "sprint-3", name: "Sprint 3", window: "Week 5-6" },
-  { id: "sprint-4", name: "Sprint 4", window: "Week 7-8" },
-];
-
-const initialStoriesByCell: StoriesByCell = {
-  [cellKey("sprint-1", "feature-1")]: [
-    {
-      id: "story-1",
-      text: "Implement email/password sign up form with validation",
-      status: "done",
-      priority: "high",
-      storyPoints: 5,
-      storyKey: "AUTH-1",
-      assignee: "Alice",
-    },
-    {
-      id: "story-2",
-      text: "Add Google OAuth integration for sign up",
-      status: "done",
-      priority: "high",
-      storyPoints: 8,
-      storyKey: "AUTH-2",
-      assignee: "Charlie",
-    },
-  ],
-  [cellKey("sprint-1", "feature-2")]: [
-    {
-      id: "story-3",
-      text: "Create email verification flow with token expiration",
-      status: "in-progress",
-      priority: "high",
-      storyPoints: 5,
-      storyKey: "AUTH-3",
-      assignee: "Bob",
-    },
-  ],
-  [cellKey("sprint-2", "feature-3")]: [
-    {
-      id: "story-4",
-      text: "Create workspace with unique slug and branding",
-      status: "in-progress",
-      priority: "high",
-      storyPoints: 8,
-      storyKey: "SETUP-1",
-      assignee: "Alice",
-    },
-  ],
-  [cellKey("sprint-2", "feature-4")]: [
-    {
-      id: "story-5",
-      text: "Invite team members with role-based permissions",
-      status: "todo",
-      priority: "high",
-      storyPoints: 5,
-      storyKey: "SETUP-2",
-      assignee: "Bob",
-    },
-    {
-      id: "story-6",
-      text: "Send invite emails with onboarding link",
-      status: "todo",
-      priority: "medium",
-      storyPoints: 3,
-      storyKey: "SETUP-3",
-    },
-  ],
-  [cellKey("sprint-3", "feature-5")]: [
-    {
-      id: "story-7",
-      text: "Build connector UI for popular data sources",
-      status: "todo",
-      priority: "high",
-      storyPoints: 13,
-      storyKey: "DATA-1",
-    },
-  ],
-  [cellKey("sprint-3", "feature-6")]: [
-    {
-      id: "story-8",
-      text: "Create field mapping interface for data transformation",
-      status: "todo",
-      priority: "medium",
-      storyPoints: 8,
-      storyKey: "DATA-2",
-    },
-  ],
-  [cellKey("sprint-4", "feature-7")]: [
-    {
-      id: "story-9",
-      text: "Build dashboard builder with drag and drop",
-      status: "todo",
-      priority: "high",
-      storyPoints: 13,
-      storyKey: "DASH-1",
-    },
-  ],
-  [cellKey("sprint-4", "feature-8")]: [
-    {
-      id: "story-10",
-      text: "Implement alert rules and notifications",
-      status: "todo",
-      priority: "medium",
-      storyPoints: 8,
-      storyKey: "DASH-2",
-    },
-  ],
-  [cellKey(BACKLOG_SPRINT_ID, "feature-1")]: [
-    {
-      id: "story-11",
-      text: "Add two-factor authentication for security",
-      status: "todo",
-      priority: "medium",
-      storyPoints: 5,
-      storyKey: "AUTH-4",
-    },
-  ],
-  [cellKey(BACKLOG_SPRINT_ID, "feature-5")]: [
-    {
-      id: "story-12",
-      text: "Support additional data sources (Salesforce, HubSpot)",
-      status: "todo",
-      priority: "low",
-      storyPoints: 13,
-      storyKey: "DATA-3",
-    },
-  ],
-  [cellKey(BACKLOG_SPRINT_ID, "feature-7")]: [
-    {
-      id: "story-13",
-      text: "Add dashboard templates for quick setup",
-      status: "todo",
-      priority: "low",
-      storyPoints: 8,
-      storyKey: "DASH-3",
-    },
-  ],
-};
+import { initialSprints, initialStoryMap } from "./seed-data";
+import { useColumnFlip } from "./use-column-flip";
+import {
+  BACKLOG_SPRINT_ID,
+  cellKey,
+  deleteFeature,
+  deleteGoal,
+  deleteStory,
+  featuresForGoal,
+  goalDeleteImpact,
+  isReservedFeatureId,
+  isReservedGoalId,
+  moveFeatureToGoal,
+  moveFeatureWithinGoal,
+  moveGoal,
+  moveStory,
+  orderedGoals,
+  storyCountForFeature,
+  UNASSIGNED_FEATURE_ID,
+  UNASSIGNED_GOAL_ID,
+  type Feature,
+  type Sprint,
+  type StoryItem,
+  type StoryMap,
+} from "./storymap";
 
 // ─── Status / Priority Config ─────────────────────────────────────────────────
 const STATUS_CONFIG = {
@@ -263,11 +112,65 @@ const STATUS_CONFIG = {
   },
 } as const;
 
-const PRIORITY_CONFIG = {
-  high: { label: "High", barColor: "bg-red-400", textColor: "text-red-500" },
-  medium: { label: "Med", barColor: "bg-amber-400", textColor: "text-amber-500" },
-  low: { label: "Low", barColor: "bg-sky-300", textColor: "text-sky-500" },
-} as const;
+const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)";
+
+const HEADER_BUTTON_CLASS =
+  "inline-flex h-5 w-5 items-center justify-center rounded border border-border/60 bg-background/60 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed";
+
+// A pending delete the user still has to confirm.
+type DeleteTarget =
+  | { kind: "goal"; id: string }
+  | { kind: "feature"; id: string }
+  | null;
+
+function pluralize(count: number, singular: string, plural = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+// ─── Drag resolution ──────────────────────────────────────────────────────────
+// closestCorners measures from the dragged card's rect, so a tall card is often
+// "closest" to a cell the cursor isn't over — the gap would open somewhere the
+// user isn't pointing. Resolve from the pointer instead, and only fall back to
+// geometry when the pointer has left every cell (e.g. dragged past the edge).
+// pointerWithin returns nested hits nearest-first, so a hovered card wins over
+// its containing cell, and an empty area of a cell resolves to the cell itself.
+const boardCollisionDetection: CollisionDetection = (args) => {
+  const underPointer = pointerWithin(args);
+  return underPointer.length > 0 ? underPointer : closestCorners(args);
+};
+
+// Both the live placeholder and the actual drop read the target from here, so
+// the gap the user sees is guaranteed to be where the card actually lands.
+type Cell = { sprintId: string; featureId: string };
+
+function cellOf(node: { data: { current?: unknown } }): Cell | null {
+  const data = node.data.current as Partial<Cell> | undefined;
+  return data?.sprintId && data.featureId
+    ? { sprintId: data.sprintId, featureId: data.featureId }
+    : null;
+}
+
+// `over` is either a cell droppable (drop at the end) or another story card
+// (drop before it) — mirroring how moveStory() splices.
+function resolveDrop(
+  active: { id: string | number; data: { current?: unknown } },
+  over: { id: string | number; data: { current?: unknown } } | null
+): { cell: Cell; beforeStoryId: string } | null {
+  if (!over || over.id === active.id) return null;
+  const cell = cellOf(over);
+  return cell ? { cell, beforeStoryId: String(over.id) } : null;
+}
+
+// The gap that opens where the card will land.
+function DropPlaceholder({ height }: { height: number }) {
+  return (
+    <div
+      aria-hidden
+      style={height > 0 ? { height } : undefined}
+      className="animate-in fade-in zoom-in-95 duration-150 rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 min-h-16"
+    />
+  );
+}
 
 // ─── DroppableCell ────────────────────────────────────────────────────────────
 function DroppableCell({
@@ -281,68 +184,53 @@ function DroppableCell({
   children: React.ReactNode;
   className?: string;
 }) {
-  const { setNodeRef, isOver } = useDroppable({
+  // Registers the cell as a drop target. There's deliberately no hover
+  // styling — the drop gap alone shows where the card is going.
+  const { setNodeRef } = useDroppable({
     id: `drop::${cellKey(sprintId, featureId)}`,
     data: { type: "cell", sprintId, featureId },
   });
 
   return (
-    <div
-      ref={setNodeRef}
-      className={cn(
-        className,
-        isOver && "bg-primary/5 ring-1 ring-inset ring-primary/20 rounded-sm"
-      )}
-    >
+    <div ref={setNodeRef} className={className}>
       {children}
     </div>
   );
 }
 
-// ─── SortableStoryCard ────────────────────────────────────────────────────────
-function SortableStoryCard({
+// ─── StoryCard ────────────────────────────────────────────────────────────────
+// The card visual, with no drag wiring — shared by the in-grid sortable card
+// and the DragOverlay copy that follows the cursor, so the thing being carried
+// is pixel-identical to the thing that was picked up.
+function StoryCard({
   story,
-  sprintId,
-  featureId,
+  handleProps,
+  onDelete,
+  lifted,
 }: {
   story: StoryItem;
-  sprintId: string;
-  featureId: string;
+  handleProps?: React.HTMLAttributes<HTMLButtonElement>;
+  onDelete?: () => void;
+  lifted?: boolean;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: story.id,
-    data: { sprintId, featureId },
-  });
-
   const status = story.status ?? "todo";
   const statusCfg = STATUS_CONFIG[status];
-  const priorityCfg = story.priority ? PRIORITY_CONFIG[story.priority] : null;
 
   return (
-    <div
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-      }}
-      className={cn(isDragging ? "opacity-40 z-50" : "opacity-100")}
-    >
-      <Card className="overflow-hidden hover:shadow-sm transition-all duration-150 bg-gray-50 dark:bg-slate-900/30">
+    <div className="group/story">
+      <Card
+        className={cn(
+          "overflow-hidden transition-shadow duration-150 bg-gray-50 dark:bg-slate-900/30",
+          lifted ? "shadow-2xl ring-2 ring-primary/30" : "hover:shadow-sm"
+        )}
+      >
         <div className="flex gap-2">
           {/* Drag handle on left */}
           <button
             type="button"
             aria-label="Drag to move"
             className="flex items-center justify-center px-2 text-muted-foreground/40 hover:text-muted-foreground transition-colors cursor-grab active:cursor-grabbing shrink-0"
-            {...attributes}
-            {...listeners}
+            {...handleProps}
           >
             <GripVertical className="h-4 w-4" />
           </button>
@@ -350,9 +238,27 @@ function SortableStoryCard({
           {/* Content */}
           <CardContent className="flex-1 py-3 pr-3">
             <div className="space-y-2 break-words">
-              {/* Story key */}
-              <div className="text-xs font-medium text-muted-foreground">
-                {story.storyKey ?? story.id.replace("story-", "AS-")}
+              {/* Story key + actions */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="text-xs font-medium text-muted-foreground">
+                  {story.storyKey ?? story.id.replace("story-", "AS-")}
+                </div>
+                {onDelete && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      aria-label={`Actions for ${story.storyKey ?? "story"}`}
+                      className="-mt-0.5 -mr-1 shrink-0 rounded p-0.5 text-muted-foreground/50 opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover/story:opacity-100 data-[state=open]:opacity-100"
+                    >
+                      <MoreVertical className="h-3.5 w-3.5" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                        <Trash2 />
+                        Delete story
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
 
               {/* Story text */}
@@ -360,7 +266,7 @@ function SortableStoryCard({
                 {story.text}
               </p>
 
-              {/* Status + priority label + points */}
+              {/* Status + points */}
               <div className="flex items-center gap-2 flex-wrap">
                 <span className={cn("text-xs px-2 py-1 rounded", statusCfg.className)}>
                   {statusCfg.label}
@@ -391,18 +297,67 @@ function SortableStoryCard({
   );
 }
 
+// ─── SortableStoryCard ────────────────────────────────────────────────────────
+function SortableStoryCard({
+  story,
+  sprintId,
+  featureId,
+  onDelete,
+}: {
+  story: StoryItem;
+  sprintId: string;
+  featureId: string;
+  onDelete: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: story.id,
+    data: { sprintId, featureId },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      data-story-id={story.id}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      // While dragging, the DragOverlay copy is the card the user is carrying;
+      // this one stays put as a faded "came from here" ghost.
+      className={cn(isDragging && "opacity-30")}
+    >
+      <StoryCard
+        story={story}
+        handleProps={{ ...attributes, ...listeners }}
+        onDelete={onDelete}
+      />
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function TasksPage() {
-  useHeaderTitle("Tasks & Story Map")
-  const [goals, setGoals] = useState<Goal[]>(initialGoals);
-  const [features, setFeatures] = useState<Feature[]>(initialFeatures);
+  useHeaderTitle("Tasks & Story Map");
+
+  const [map, setMap] = useState<StoryMap>(initialStoryMap);
   const [sprints, setSprints] = useState<Sprint[]>(initialSprints);
-  const [storiesByCell, setStoriesByCell] =
-    useState<StoriesByCell>(initialStoriesByCell);
+  const { goals, features, storiesByCell } = map;
 
   const [activeModal, setActiveModal] = useState<
     "sprint" | "goal" | "feature" | "story" | null
   >(null);
+  // `target` and `snapshot` outlive `open` so the dialog can animate out
+  // showing what it was about, rather than flashing an empty other-branch.
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    target: DeleteTarget;
+    snapshot: StoryMap;
+  }>({ open: false, target: null, snapshot: initialStoryMap });
+  const [storyDestinationId, setStoryDestinationId] = useState(UNASSIGNED_FEATURE_ID);
 
   const [newSprintName, setNewSprintName] = useState("");
   const [newSprintWindow, setNewSprintWindow] = useState("");
@@ -410,15 +365,18 @@ export default function TasksPage() {
   const [newFeatureTitle, setNewFeatureTitle] = useState("");
   const [newStoryText, setNewStoryText] = useState("");
 
-  const [selectedGoalId, setSelectedGoalId] = useState(
-    initialGoals[0]?.id ?? ""
-  );
-  const [selectedSprintId, setSelectedSprintId] = useState(
-    initialSprints[0]?.id ?? ""
-  );
-  const [selectedFeatureId, setSelectedFeatureId] = useState(
-    initialFeatures[0]?.id ?? ""
-  );
+  const [selectedGoalId, setSelectedGoalId] = useState("");
+  const [selectedSprintId, setSelectedSprintId] = useState("");
+  const [selectedFeatureId, setSelectedFeatureId] = useState("");
+
+  const { containerRef: boardRef, captureColumns } = useColumnFlip();
+
+  const [drag, setDrag] = useState<{
+    story: StoryItem;
+    from: Cell;
+    height: number;
+    over: { cell: Cell; beforeStoryId: string } | null;
+  } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -427,17 +385,67 @@ export default function TasksPage() {
     })
   );
 
+  // Only real goals/features can be picked as parents or targets — the
+  // fallbacks are somewhere work lands, never somewhere you file it.
+  const assignableGoals = useMemo(
+    () => goals.filter((goal) => !isReservedGoalId(goal.id)),
+    [goals]
+  );
+  const assignableFeatures = useMemo(
+    () => features.filter((feature) => !isReservedFeatureId(feature.id)),
+    [features]
+  );
+
+  // Selections are resolved rather than stored, so deleting whatever was
+  // selected can never leave a form pointing at something that is gone.
+  const activeGoalId = assignableGoals.some((g) => g.id === selectedGoalId)
+    ? selectedGoalId
+    : assignableGoals[0]?.id ?? "";
+  const activeFeatureId = assignableFeatures.some((f) => f.id === selectedFeatureId)
+    ? selectedFeatureId
+    : assignableFeatures[0]?.id ?? "";
+  const activeSprintId =
+    selectedSprintId === BACKLOG_SPRINT_ID ||
+    sprints.some((s) => s.id === selectedSprintId)
+      ? selectedSprintId
+      : sprints[0]?.id ?? BACKLOG_SPRINT_ID;
+
   const goalColumns = useMemo(() => {
     let currentIdx = 0;
-    return goals.map((goal) => {
-      const goalFeatures = features.filter((f) => f.goalId === goal.id);
-      const colCount = Math.max(1, goalFeatures.length);
+    return orderedGoals(goals).map((goal) => {
+      const colCount = Math.max(1, featuresForGoal(features, goal.id).length);
       const start = currentIdx + 2;
       const end = start + colCount;
       currentIdx += colCount;
       return { ...goal, colCount, start, end };
     });
   }, [goals, features]);
+
+  const unassignedStoryCount = useMemo(
+    () =>
+      features
+        .filter((feature) => feature.goalId === UNASSIGNED_GOAL_ID)
+        .reduce(
+          (total, feature) => total + storyCountForFeature(map, feature.id),
+          0
+        ),
+    [features, map]
+  );
+
+  // ─── Mutation helper ───────────────────────────────────────────────────────
+  // Every destructive action routes through here: one atomic transition plus a
+  // snapshot restore, which is all undo needs while state lives in memory.
+  const applyWithUndo = (next: StoryMap, message: string, description?: string) => {
+    const snapshot = map;
+    setMap(next);
+    toast(message, {
+      description,
+      action: {
+        label: "Undo",
+        onClick: () => setMap(snapshot),
+      },
+    });
+  };
 
   // ─── CRUD ──────────────────────────────────────────────────────────────────
   const addSprint = () => {
@@ -458,7 +466,7 @@ export default function TasksPage() {
     const title = newGoalTitle.trim();
     if (!title) return;
     const id = `goal-${Date.now()}`;
-    setGoals((prev) => [...prev, { id, title }]);
+    setMap((prev) => ({ ...prev, goals: [...prev.goals, { id, title }] }));
     setSelectedGoalId(id);
     setNewGoalTitle("");
     setActiveModal(null);
@@ -466,64 +474,38 @@ export default function TasksPage() {
 
   const addFeature = () => {
     const title = newFeatureTitle.trim();
-    if (!title || !selectedGoalId) return;
+    if (!title || !activeGoalId) return;
     const id = `feature-${Date.now()}`;
-    setFeatures((prev) => [...prev, { id, title, goalId: selectedGoalId }]);
+    setMap((prev) => ({
+      ...prev,
+      features: [...prev.features, { id, title, goalId: activeGoalId }],
+    }));
     setSelectedFeatureId(id);
     setNewFeatureTitle("");
     setActiveModal(null);
   };
 
-  const moveGoal = (goalId: string, direction: "left" | "right") => {
-    setGoals((prev) => {
-      const oldIndex = prev.findIndex((goal) => goal.id === goalId);
-      if (oldIndex < 0) return prev;
-      const nextIndex = direction === "left" ? oldIndex - 1 : oldIndex + 1;
-      if (nextIndex < 0 || nextIndex >= prev.length) return prev;
-      return arrayMove(prev, oldIndex, nextIndex);
-    });
-  };
-
-  const moveFeatureWithinGoal = (
-    goalId: string,
-    featureId: string,
-    direction: "left" | "right"
-  ) => {
-    setFeatures((prev) => {
-      const goalFeatures = prev.filter((feature) => feature.goalId === goalId);
-      if (goalFeatures.length < 2) return prev;
-
-      const oldIndex = goalFeatures.findIndex((feature) => feature.id === featureId);
-      if (oldIndex < 0) return prev;
-      const nextIndex = direction === "left" ? oldIndex - 1 : oldIndex + 1;
-      if (nextIndex < 0 || nextIndex >= goalFeatures.length) return prev;
-
-      const reorderedGoalFeatures = arrayMove(goalFeatures, oldIndex, nextIndex);
-      let goalFeaturePointer = 0;
-
-      return prev.map((feature) => {
-        if (feature.goalId !== goalId) return feature;
-        const nextFeature = reorderedGoalFeatures[goalFeaturePointer];
-        goalFeaturePointer += 1;
-        return nextFeature;
-      });
-    });
-  };
-
-  const addStory = () => {
-    const text = newStoryText.trim();
-    if (!text || !selectedSprintId || !selectedFeatureId) return;
-    const key = cellKey(selectedSprintId, selectedFeatureId);
+  const insertStory = (sprintId: string, featureId: string, text: string) => {
     const story: StoryItem = {
       id: `story-${Date.now()}`,
       text,
       status: "todo",
       storyKey: `AS-${Date.now() % 1000}`,
     };
-    setStoriesByCell((prev) => ({
+    const key = cellKey(sprintId, featureId);
+    setMap((prev) => ({
       ...prev,
-      [key]: [...(prev[key] ?? []), story],
+      storiesByCell: {
+        ...prev.storiesByCell,
+        [key]: [...(prev.storiesByCell[key] ?? []), story],
+      },
     }));
+  };
+
+  const addStory = () => {
+    const text = newStoryText.trim();
+    if (!text || !activeSprintId || !activeFeatureId) return;
+    insertStory(activeSprintId, activeFeatureId, text);
     setNewStoryText("");
     setActiveModal(null);
   };
@@ -531,71 +513,125 @@ export default function TasksPage() {
   const addStoryToCell = (sprintId: string, featureId: string) => {
     const text = window.prompt("New User Story / Task:");
     if (!text?.trim()) return;
-    const key = cellKey(sprintId, featureId);
-    const story: StoryItem = {
-      id: `story-${Date.now()}`,
-      text: text.trim(),
-      status: "todo",
-      storyKey: `AS-${Date.now() % 1000}`,
-    };
-    setStoriesByCell((prev) => ({
-      ...prev,
-      [key]: [...(prev[key] ?? []), story],
-    }));
+    insertStory(sprintId, featureId, text.trim());
   };
 
-  // ─── Drag & Drop ────────────────────────────────────────────────────────────
-  const handleDragEnd = ({ active, over }: DragEndEvent) => {
-    if (!over) return;
+  // ─── Reordering ────────────────────────────────────────────────────────────
+  // Each of these captures column positions first so the FLIP effect can slide
+  // the affected columns to their new slots instead of teleporting them.
+  const handleMoveGoal = (goalId: string, direction: "left" | "right") => {
+    captureColumns();
+    setMap((prev) => moveGoal(prev, goalId, direction));
+  };
 
-    const activeData = active.data.current as
-      | { sprintId?: string; featureId?: string }
-      | undefined;
-    if (!activeData?.sprintId || !activeData.featureId) return;
+  const handleMoveFeature = (
+    goalId: string,
+    featureId: string,
+    direction: "left" | "right"
+  ) => {
+    captureColumns();
+    setMap((prev) => moveFeatureWithinGoal(prev, goalId, featureId, direction));
+  };
 
-    const overData = over.data.current as
-      | { type?: string; sprintId?: string; featureId?: string }
-      | undefined;
+  const handleMoveFeatureToGoal = (feature: Feature, goalId: string) => {
+    const goalTitle = goals.find((goal) => goal.id === goalId)?.title ?? "goal";
+    captureColumns();
+    applyWithUndo(
+      moveFeatureToGoal(map, feature.id, goalId),
+      `Moved "${feature.title}" to ${goalTitle}`
+    );
+  };
 
-    const targetSprintId = overData?.sprintId;
-    const targetFeatureId = overData?.featureId;
-    if (!targetSprintId || !targetFeatureId) return;
+  // ─── Deletion ──────────────────────────────────────────────────────────────
+  const requestDelete = (target: NonNullable<DeleteTarget>) => {
+    if (target.kind === "feature") setStoryDestinationId(UNASSIGNED_FEATURE_ID);
+    setDeleteDialog({ open: true, target, snapshot: map });
+  };
 
-    const sourceKey = cellKey(activeData.sprintId, activeData.featureId);
-    const targetKey = cellKey(targetSprintId, targetFeatureId);
+  const closeDeleteDialog = () =>
+    setDeleteDialog((prev) => ({ ...prev, open: false }));
 
-    if (sourceKey === targetKey) {
-      if (active.id === over.id) return;
-      setStoriesByCell((prev) => {
-        const items = prev[sourceKey] ?? [];
-        const oldIndex = items.findIndex((s) => s.id === active.id);
-        const newIndex = items.findIndex((s) => s.id === over.id);
-        if (oldIndex < 0 || newIndex < 0) return prev;
-        return { ...prev, [sourceKey]: arrayMove(items, oldIndex, newIndex) };
-      });
+  const confirmDelete = () => {
+    const target = deleteDialog.target;
+    if (!target) return;
+
+    if (target.kind === "goal") {
+      const goal = goals.find((g) => g.id === target.id);
+      const impact = goalDeleteImpact(map, target.id);
+      applyWithUndo(
+        deleteGoal(map, target.id),
+        `Deleted goal "${goal?.title ?? ""}"`,
+        impact.featureCount > 0
+          ? `${pluralize(impact.featureCount, "feature")} moved to Unassigned.`
+          : undefined
+      );
     } else {
-      setStoriesByCell((prev) => {
-        const sourceItems = [...(prev[sourceKey] ?? [])];
-        const targetItems = [...(prev[targetKey] ?? [])];
-
-        const storyIdx = sourceItems.findIndex((s) => s.id === active.id);
-        if (storyIdx < 0) return prev;
-
-        const [story] = sourceItems.splice(storyIdx, 1);
-        const overIdx = targetItems.findIndex((s) => s.id === over.id);
-        if (overIdx >= 0) {
-          targetItems.splice(overIdx, 0, story);
-        } else {
-          targetItems.push(story);
-        }
-
-        return {
-          ...prev,
-          [sourceKey]: sourceItems,
-          [targetKey]: targetItems,
-        };
-      });
+      const feature = features.find((f) => f.id === target.id);
+      const storyCount = storyCountForFeature(map, target.id);
+      const destinationTitle =
+        storyDestinationId === UNASSIGNED_FEATURE_ID
+          ? "Unassigned"
+          : features.find((f) => f.id === storyDestinationId)?.title ?? "Unassigned";
+      applyWithUndo(
+        deleteFeature(map, target.id, storyDestinationId),
+        `Deleted feature "${feature?.title ?? ""}"`,
+        storyCount > 0
+          ? `${pluralize(storyCount, "story", "stories")} moved to ${destinationTitle}, sprints kept.`
+          : undefined
+      );
     }
+
+    closeDeleteDialog();
+  };
+
+  const handleDeleteStory = (
+    sprintId: string,
+    featureId: string,
+    story: StoryItem
+  ) =>
+    applyWithUndo(
+      deleteStory(map, sprintId, featureId, story.id),
+      `Deleted ${story.storyKey ?? "story"}`,
+      story.text
+    );
+
+  // ─── Drag & Drop ────────────────────────────────────────────────────────────
+  const handleDragStart = ({ active }: DragStartEvent) => {
+    const from = cellOf(active);
+    if (!from) return;
+    const story = (storiesByCell[cellKey(from.sprintId, from.featureId)] ?? []).find(
+      (s) => s.id === active.id
+    );
+    if (!story) return;
+    setDrag({
+      story,
+      from,
+      // Size the placeholder to the card being carried so the gap that opens
+      // is exactly the space it will occupy. active.rect isn't measured yet at
+      // drag start, so read the node itself.
+      height:
+        document
+          .querySelector(`[data-story-id="${active.id}"]`)
+          ?.getBoundingClientRect().height ?? 0,
+      over: null,
+    });
+  };
+
+  const handleDragOver = ({ active, over }: DragOverEvent) =>
+    setDrag((prev) =>
+      prev ? { ...prev, over: resolveDrop(active, over) } : prev
+    );
+
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    setDrag(null);
+
+    const from = cellOf(active);
+    const to = resolveDrop(active, over);
+    if (!from || !to) return;
+
+    setMap((prev) =>
+      moveStory(prev, from, to.cell, String(active.id), to.beforeStoryId)
+    );
   };
 
   const totalGoalColumns = goalColumns.reduce((sum, g) => sum + g.colCount, 0);
@@ -606,6 +642,25 @@ export default function TasksPage() {
   const renderCellContent = (sprintId: string, featureId: string) => {
     const key = cellKey(sprintId, featureId);
     const laneStories = storiesByCell[key] ?? [];
+
+    // Only preview cross-cell drops. Within one cell the sortable strategy
+    // already slides the siblings apart, so a placeholder would double up.
+    const target = drag?.over?.cell;
+    const isTarget =
+      !!target &&
+      target.sprintId === sprintId &&
+      target.featureId === featureId &&
+      !(drag.from.sprintId === sprintId && drag.from.featureId === featureId);
+
+    const placeholderAt = isTarget
+      ? (() => {
+          const idx = laneStories.findIndex(
+            (s) => s.id === drag.over!.beforeStoryId
+          );
+          return idx >= 0 ? idx : laneStories.length; // no match → appended
+        })()
+      : -1;
+
     return (
       <DroppableCell
         sprintId={sprintId}
@@ -617,14 +672,22 @@ export default function TasksPage() {
           strategy={verticalListSortingStrategy}
         >
           <div className="space-y-3">
-            {laneStories.map((story) => (
-              <SortableStoryCard
-                key={story.id}
-                story={story}
-                sprintId={sprintId}
-                featureId={featureId}
-              />
+            {laneStories.map((story, index) => (
+              <Fragment key={story.id}>
+                {placeholderAt === index && (
+                  <DropPlaceholder height={drag!.height} />
+                )}
+                <SortableStoryCard
+                  story={story}
+                  sprintId={sprintId}
+                  featureId={featureId}
+                  onDelete={() => handleDeleteStory(sprintId, featureId, story)}
+                />
+              </Fragment>
             ))}
+            {placeholderAt >= laneStories.length && (
+              <DropPlaceholder height={drag!.height} />
+            )}
           </div>
         </SortableContext>
 
@@ -639,6 +702,54 @@ export default function TasksPage() {
       </DroppableCell>
     );
   };
+
+  // Walks the backbone once and renders one cell per feature column, so every
+  // row (sprints, backlog header, backlog cells) stays aligned to the grid.
+  const renderFeatureCells = (
+    keyPrefix: string,
+    render: (feature: Feature, goalId: string) => React.ReactNode,
+    emptyClassName: string
+  ) =>
+    goalColumns.map((goal) => {
+      const goalFeatures = featuresForGoal(features, goal.id);
+      if (goalFeatures.length === 0) {
+        return (
+          <div
+            key={`${keyPrefix}-empty-${goal.id}`}
+            data-flip-key={`${keyPrefix}-empty-${goal.id}`}
+            className={emptyClassName}
+          />
+        );
+      }
+      return goalFeatures.map((feature) => (
+        <div
+          key={`${keyPrefix}-${feature.id}`}
+          data-flip-key={`${keyPrefix}-${feature.id}`}
+          className={emptyClassName}
+        >
+          {render(feature, goal.id)}
+        </div>
+      ));
+    });
+
+  const { target: shownTarget, snapshot: shownSnapshot } = deleteDialog;
+
+  const deletingGoal =
+    shownTarget?.kind === "goal"
+      ? shownSnapshot.goals.find((goal) => goal.id === shownTarget.id)
+      : undefined;
+  const deletingGoalImpact =
+    shownTarget?.kind === "goal"
+      ? goalDeleteImpact(shownSnapshot, shownTarget.id)
+      : null;
+  const deletingFeature =
+    shownTarget?.kind === "feature"
+      ? shownSnapshot.features.find((feature) => feature.id === shownTarget.id)
+      : undefined;
+  const deletingFeatureStoryCount =
+    shownTarget?.kind === "feature"
+      ? storyCountForFeature(shownSnapshot, shownTarget.id)
+      : 0;
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -659,7 +770,7 @@ export default function TasksPage() {
           size="sm"
           className="gap-1.5 shadow-sm"
           onClick={() => {
-            if (goals.length === 0 || features.length === 0) {
+            if (assignableGoals.length === 0 || assignableFeatures.length === 0) {
               alert("Please add at least one Goal and Feature first!");
               return;
             }
@@ -674,8 +785,11 @@ export default function TasksPage() {
         {/* Story Mapping Board */}
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCorners}
+          collisionDetection={boardCollisionDetection}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
+          onDragCancel={() => setDrag(null)}
         >
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border/70 bg-muted/10 shadow-xs">
             {/* Board toolbar */}
@@ -692,14 +806,19 @@ export default function TasksPage() {
                 </Badge>
                 <Badge variant="outline" className="gap-1 text-xs">
                   <Target className="h-3 w-3 text-sky-500" />
-                  {goals.length} Goals
+                  {assignableGoals.length} Goals
                 </Badge>
+                {unassignedStoryCount > 0 && (
+                  <Badge variant="outline" className="gap-1 text-xs border-dashed">
+                    <Inbox className="h-3 w-3 text-muted-foreground" />
+                    {unassignedStoryCount} Unassigned
+                  </Badge>
+                )}
               </div>
               <p className="hidden text-xs text-muted-foreground sm:inline-block">
                 Drag stories across sprints, goals, or into the backlog.
               </p>
             </div>
-
 
             {features.length === 0 ? (
               <div className="flex flex-1 flex-col items-center justify-center p-12 text-center">
@@ -728,7 +847,7 @@ export default function TasksPage() {
               </div>
             ) : (
               <div className="flex-1 overflow-auto">
-                <div className="min-w-[1220px]">
+                <div ref={boardRef} className="min-w-[1220px]">
 
                   {/* ── Row 1: Goal Backbone (sticky, light gray) ─────────── */}
                   <div
@@ -738,40 +857,74 @@ export default function TasksPage() {
                     <div className="sticky left-0 z-50 flex items-center border-r border-border/70 bg-gray-100 dark:bg-neutral-900 px-5 font-bold tracking-wider text-muted-foreground backdrop-blur shadow-xs">
                       The Backbone
                     </div>
-                    {goalColumns.map((goal, goalIndex) => (
-                      <div
-                        key={goal.id}
-                        className="flex items-center border-r border-border/70 bg-gray-100 dark:bg-neutral-900 px-5"
-                        style={{ gridColumn: `${goal.start} / ${goal.end}` }}
-                      >
-                        <div className="flex w-full items-center justify-between gap-2">
-                          <div className="flex min-w-0 items-center gap-1.5 font-semibold text-sky-700 dark:text-sky-300">
-                            <Target className="h-3.5 w-3.5 shrink-0" />
-                            <span className="truncate">{goal.title}</span>
-                          </div>
-                          <div className="flex shrink-0 items-center gap-0.5">
-                            <button
-                              type="button"
-                              aria-label="Move goal left"
-                              disabled={goalIndex === 0}
-                              onClick={() => moveGoal(goal.id, "left")}
-                              className="inline-flex h-5 w-5 items-center justify-center rounded border border-border/60 bg-background/60 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                    {goalColumns.map((goal, goalIndex) => {
+                      const reserved = isReservedGoalId(goal.id);
+                      const lastAssignableIndex = goalColumns.findLastIndex(
+                        (column) => !isReservedGoalId(column.id)
+                      );
+                      return (
+                        <div
+                          key={goal.id}
+                          data-flip-key={`goal-header-${goal.id}`}
+                          className="flex items-center border-r border-border/70 bg-gray-100 dark:bg-neutral-900 px-5"
+                          style={{ gridColumn: `${goal.start} / ${goal.end}` }}
+                        >
+                          <div className="flex w-full items-center justify-between gap-2">
+                            <div
+                              className={cn(
+                                "flex min-w-0 items-center gap-1.5 font-semibold",
+                                reserved
+                                  ? "text-muted-foreground"
+                                  : "text-sky-700 dark:text-sky-300"
+                              )}
                             >
-                              <ChevronLeft className="h-3 w-3" />
-                            </button>
-                            <button
-                              type="button"
-                              aria-label="Move goal right"
-                              disabled={goalIndex === goalColumns.length - 1}
-                              onClick={() => moveGoal(goal.id, "right")}
-                              className="inline-flex h-5 w-5 items-center justify-center rounded border border-border/60 bg-background/60 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
-                            >
-                              <ChevronRight className="h-3 w-3" />
-                            </button>
+                              {reserved ? (
+                                <Inbox className="h-3.5 w-3.5 shrink-0" />
+                              ) : (
+                                <Target className="h-3.5 w-3.5 shrink-0" />
+                              )}
+                              <span className="truncate">{goal.title}</span>
+                            </div>
+                            {!reserved && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger
+                                  aria-label={`Actions for goal ${goal.title}`}
+                                  className={HEADER_BUTTON_CLASS}
+                                >
+                                  <MoreVertical className="h-3 w-3" />
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuItem
+                                    disabled={goalIndex === 0}
+                                    onClick={() => handleMoveGoal(goal.id, "left")}
+                                  >
+                                    <ChevronLeft />
+                                    Move left
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    disabled={goalIndex >= lastAssignableIndex}
+                                    onClick={() => handleMoveGoal(goal.id, "right")}
+                                  >
+                                    <ChevronRight />
+                                    Move right
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    variant="destructive"
+                                    onClick={() =>
+                                      requestDelete({ kind: "goal", id: goal.id })
+                                    }
+                                  >
+                                    <Trash2 />
+                                    Delete goal
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   {/* ── Row 2: Feature Headers (sticky, light gray) ────────── */}
@@ -783,52 +936,134 @@ export default function TasksPage() {
                       Sprints &amp; Actions
                     </div>
                     {goalColumns.map((goal) => {
-                      const goalFeatures = features.filter(
-                        (f) => f.goalId === goal.id
-                      );
+                      const goalFeatures = featuresForGoal(features, goal.id);
                       if (goalFeatures.length === 0) {
                         return (
                           <div
                             key={`empty-${goal.id}`}
+                            data-flip-key={`feature-header-empty-${goal.id}`}
                             className="border-r border-border/70 px-5 bg-gray-50 dark:bg-neutral-800/80"
                           />
                         );
                       }
-                      return goalFeatures.map((feature, featureIndex) => (
-                        <div
-                          key={feature.id}
-                          className="flex items-center border-r border-border/70 px-5 bg-gray-50 dark:bg-neutral-800/80"
-                        >
-                          <div className="flex w-full items-center justify-between gap-2">
-                            <div className="flex min-w-0 items-center gap-1.5 font-semibold text-primary/80">
-                              <Layers className="h-3.5 w-3.5 shrink-0 text-indigo-500/80" />
-                              <span className="truncate text-sm tracking-tight">
-                                {feature.title}
-                              </span>
-                            </div>
-                            <div className="flex shrink-0 items-center gap-0.5">
-                              <button
-                                type="button"
-                                aria-label="Move feature left"
-                                disabled={featureIndex === 0}
-                                onClick={() => moveFeatureWithinGoal(goal.id, feature.id, "left")}
-                                className="inline-flex h-5 w-5 items-center justify-center rounded border border-border/60 bg-background/60 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                      const lastAssignableIndex = goalFeatures.findLastIndex(
+                        (feature) => !isReservedFeatureId(feature.id)
+                      );
+                      return goalFeatures.map((feature, featureIndex) => {
+                        const reserved = isReservedFeatureId(feature.id);
+                        const otherGoals = assignableGoals.filter(
+                          (candidate) => candidate.id !== feature.goalId
+                        );
+                        return (
+                          <div
+                            key={feature.id}
+                            data-flip-key={`feature-header-${feature.id}`}
+                            className="flex items-center border-r border-border/70 px-5 bg-gray-50 dark:bg-neutral-800/80"
+                          >
+                            <div className="flex w-full items-center justify-between gap-2">
+                              <div
+                                className={cn(
+                                  "flex min-w-0 items-center gap-1.5 font-semibold",
+                                  reserved
+                                    ? "text-muted-foreground"
+                                    : "text-primary/80"
+                                )}
                               >
-                                <ChevronLeft className="h-3 w-3" />
-                              </button>
-                              <button
-                                type="button"
-                                aria-label="Move feature right"
-                                disabled={featureIndex === goalFeatures.length - 1}
-                                onClick={() => moveFeatureWithinGoal(goal.id, feature.id, "right")}
-                                className="inline-flex h-5 w-5 items-center justify-center rounded border border-border/60 bg-background/60 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
-                              >
-                                <ChevronRight className="h-3 w-3" />
-                              </button>
+                                <Layers
+                                  className={cn(
+                                    "h-3.5 w-3.5 shrink-0",
+                                    reserved
+                                      ? "text-muted-foreground/60"
+                                      : "text-indigo-500/80"
+                                  )}
+                                />
+                                <span
+                                  className={cn(
+                                    "truncate text-sm tracking-tight",
+                                    reserved && "italic font-normal"
+                                  )}
+                                >
+                                  {feature.title}
+                                </span>
+                              </div>
+                              {!reserved && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger
+                                    aria-label={`Actions for feature ${feature.title}`}
+                                    className={HEADER_BUTTON_CLASS}
+                                  >
+                                    <MoreVertical className="h-3 w-3" />
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-52">
+                                    <DropdownMenuItem
+                                      disabled={featureIndex === 0}
+                                      onClick={() =>
+                                        handleMoveFeature(goal.id, feature.id, "left")
+                                      }
+                                    >
+                                      <ChevronLeft />
+                                      Move left
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      disabled={featureIndex >= lastAssignableIndex}
+                                      onClick={() =>
+                                        handleMoveFeature(goal.id, feature.id, "right")
+                                      }
+                                    >
+                                      <ChevronRight />
+                                      Move right
+                                    </DropdownMenuItem>
+                                    {otherGoals.length > 0 && (
+                                      <DropdownMenuSub>
+                                        <DropdownMenuSubTrigger>
+                                          <ArrowLeftRight />
+                                          Move to goal
+                                        </DropdownMenuSubTrigger>
+                                        <DropdownMenuSubContent className="w-52">
+                                          <DropdownMenuGroup>
+                                            <DropdownMenuLabel>
+                                              Reassign under
+                                            </DropdownMenuLabel>
+                                            {otherGoals.map((candidate) => (
+                                              <DropdownMenuItem
+                                                key={candidate.id}
+                                                onClick={() =>
+                                                  handleMoveFeatureToGoal(
+                                                    feature,
+                                                    candidate.id
+                                                  )
+                                                }
+                                              >
+                                                <Target />
+                                                <span className="truncate">
+                                                  {candidate.title}
+                                                </span>
+                                              </DropdownMenuItem>
+                                            ))}
+                                          </DropdownMenuGroup>
+                                        </DropdownMenuSubContent>
+                                      </DropdownMenuSub>
+                                    )}
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      variant="destructive"
+                                      onClick={() =>
+                                        requestDelete({
+                                          kind: "feature",
+                                          id: feature.id,
+                                        })
+                                      }
+                                    >
+                                      <Trash2 />
+                                      Delete feature
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
                             </div>
                           </div>
-                        </div>
-                      ));
+                        );
+                      });
                     })}
                   </div>
 
@@ -848,27 +1083,11 @@ export default function TasksPage() {
                         </p>
                       </div>
 
-                      {goalColumns.map((goal) => {
-                        const goalFeatures = features.filter(
-                          (f) => f.goalId === goal.id
-                        );
-                        if (goalFeatures.length === 0) {
-                          return (
-                            <div
-                              key={`empty-${goal.id}`}
-                              className="border-r border-border/60 p-3 last:border-r-0 bg-card/10"
-                            />
-                          );
-                        }
-                        return goalFeatures.map((feature) => (
-                          <div
-                            key={feature.id}
-                            className="border-r border-border/60 p-3 last:border-r-0 bg-card/10"
-                          >
-                            {renderCellContent(sprint.id, feature.id)}
-                          </div>
-                        ));
-                      })}
+                      {renderFeatureCells(
+                        `sprint-${sprint.id}`,
+                        (feature) => renderCellContent(sprint.id, feature.id),
+                        "border-r border-border/60 p-3 last:border-r-0 bg-card/10"
+                      )}
                     </div>
                   ))}
 
@@ -885,29 +1104,15 @@ export default function TasksPage() {
                           Backlog
                         </span>
                       </div>
-                      {goalColumns.map((goal) => {
-                        const goalFeatures = features.filter(
-                          (f) => f.goalId === goal.id
-                        );
-                        if (goalFeatures.length === 0) {
-                          return (
-                            <div
-                              key={`bl-empty-${goal.id}`}
-                              className="border-r border-border/60 px-5 py-2.5 last:border-r-0"
-                            />
-                          );
-                        }
-                        return goalFeatures.map((feature) => (
-                          <div
-                            key={`bl-feat-${feature.id}`}
-                            className="border-r border-border/60 px-5 py-2.5 last:border-r-0"
-                          >
-                            <span className="text-[11px] text-muted-foreground/70 italic">
-                              {feature.title}
-                            </span>
-                          </div>
-                        ));
-                      })}
+                      {renderFeatureCells(
+                        "bl-feat",
+                        (feature) => (
+                          <span className="text-[11px] text-muted-foreground/70 italic">
+                            {feature.title}
+                          </span>
+                        ),
+                        "border-r border-border/60 px-5 py-2.5 last:border-r-0"
+                      )}
                     </div>
 
                     {/* Backlog story cells */}
@@ -924,33 +1129,29 @@ export default function TasksPage() {
                         </p>
                       </div>
 
-                      {goalColumns.map((goal) => {
-                        const goalFeatures = features.filter(
-                          (f) => f.goalId === goal.id
-                        );
-                        if (goalFeatures.length === 0) {
-                          return (
-                            <div
-                              key={`bl-empty-cell-${goal.id}`}
-                              className="border-r border-border/60 p-3 last:border-r-0"
-                            />
-                          );
-                        }
-                        return goalFeatures.map((feature) => (
-                          <div
-                            key={`bl-cell-${feature.id}`}
-                            className="border-r border-border/60 p-3 last:border-r-0"
-                          >
-                            {renderCellContent(BACKLOG_SPRINT_ID, feature.id)}
-                          </div>
-                        ));
-                      })}
+                      {renderFeatureCells(
+                        "bl-cell",
+                        (feature) =>
+                          renderCellContent(BACKLOG_SPRINT_ID, feature.id),
+                        "border-r border-border/60 p-3 last:border-r-0"
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
             )}
           </div>
+
+          {/* The card the user is actually carrying — a portalled copy that
+              tracks the pointer across cells, which the in-grid sortable node
+              can't do because the list strategy pins it to its own column. */}
+          <DragOverlay dropAnimation={{ duration: 200, easing: EASE_OUT }}>
+            {drag && (
+              <div className="rotate-2 cursor-grabbing">
+                <StoryCard story={drag.story} lifted />
+              </div>
+            )}
+          </DragOverlay>
         </DndContext>
 
         {/* ── DIALOG MODALS ──────────────────────────────────────────────────── */}
@@ -1047,10 +1248,10 @@ export default function TasksPage() {
                 <select
                   id="parent-goal"
                   className="h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm focus-visible:outline-none"
-                  value={selectedGoalId}
+                  value={activeGoalId}
                   onChange={(e) => setSelectedGoalId(e.target.value)}
                 >
-                  {goals.map((g) => (
+                  {assignableGoals.map((g) => (
                     <option key={g.id} value={g.id}>
                       {g.title}
                     </option>
@@ -1073,7 +1274,7 @@ export default function TasksPage() {
               </Button>
               <Button
                 onClick={addFeature}
-                disabled={!newFeatureTitle.trim() || !selectedGoalId}
+                disabled={!newFeatureTitle.trim() || !activeGoalId}
               >
                 Create Feature
               </Button>
@@ -1098,7 +1299,7 @@ export default function TasksPage() {
                 <select
                   id="target-sprint"
                   className="h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm focus-visible:outline-none"
-                  value={selectedSprintId}
+                  value={activeSprintId}
                   onChange={(e) => setSelectedSprintId(e.target.value)}
                 >
                   {sprints.map((s) => (
@@ -1116,13 +1317,17 @@ export default function TasksPage() {
                 <select
                   id="target-feature"
                   className="h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm focus-visible:outline-none"
-                  value={selectedFeatureId}
+                  value={activeFeatureId}
                   onChange={(e) => setSelectedFeatureId(e.target.value)}
                 >
-                  {features.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.title}
-                    </option>
+                  {assignableGoals.map((goal) => (
+                    <optgroup key={goal.id} label={goal.title}>
+                      {featuresForGoal(assignableFeatures, goal.id).map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.title}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               </div>
@@ -1142,6 +1347,93 @@ export default function TasksPage() {
               </Button>
               <Button onClick={addStory} disabled={!newStoryText.trim()}>
                 Map Story
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Delete confirmation ────────────────────────────────────────────── */}
+        <Dialog
+          open={deleteDialog.open}
+          onOpenChange={(open) => !open && closeDeleteDialog()}
+        >
+          <DialogContent>
+            {shownTarget?.kind === "goal" ? (
+              <>
+                <DialogHeader>
+                  <DialogTitle>
+                    Delete goal &ldquo;{deletingGoal?.title}&rdquo;?
+                  </DialogTitle>
+                  <DialogDescription>
+                    {deletingGoalImpact && deletingGoalImpact.featureCount > 0 ? (
+                      <>
+                        {pluralize(deletingGoalImpact.featureCount, "feature")} and{" "}
+                        {pluralize(deletingGoalImpact.storyCount, "story", "stories")} move to{" "}
+                        <span className="font-medium text-foreground">Unassigned</span>.
+                        Feature columns and sprint rows are preserved — only the goal
+                        grouping is removed.
+                      </>
+                    ) : (
+                      "This goal has no features. Nothing else will be affected."
+                    )}
+                  </DialogDescription>
+                </DialogHeader>
+              </>
+            ) : (
+              <>
+                <DialogHeader>
+                  <DialogTitle>
+                    Delete feature &ldquo;{deletingFeature?.title}&rdquo;?
+                  </DialogTitle>
+                  <DialogDescription>
+                    {deletingFeatureStoryCount > 0
+                      ? `${pluralize(
+                          deletingFeatureStoryCount,
+                          "story",
+                          "stories"
+                        )} will be reassigned. Each story keeps its sprint row.`
+                      : "This feature has no stories. Nothing else will be affected."}
+                  </DialogDescription>
+                </DialogHeader>
+                {deletingFeatureStoryCount > 0 && (
+                  <div className="space-y-1.5 py-1">
+                    <Label htmlFor="story-destination">Move stories to</Label>
+                    <select
+                      id="story-destination"
+                      className="h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm focus-visible:outline-none"
+                      value={storyDestinationId}
+                      onChange={(e) => setStoryDestinationId(e.target.value)}
+                    >
+                      <option value={UNASSIGNED_FEATURE_ID}>
+                        Unassigned (triage later)
+                      </option>
+                      {assignableGoals.map((goal) => {
+                        const options = featuresForGoal(
+                          assignableFeatures,
+                          goal.id
+                        ).filter((f) => f.id !== shownTarget?.id);
+                        if (options.length === 0) return null;
+                        return (
+                          <optgroup key={goal.id} label={goal.title}>
+                            {options.map((f) => (
+                              <option key={f.id} value={f.id}>
+                                {f.title}
+                              </option>
+                            ))}
+                          </optgroup>
+                        );
+                      })}
+                    </select>
+                  </div>
+                )}
+              </>
+            )}
+            <DialogFooter>
+              <Button variant="ghost" onClick={closeDeleteDialog}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={confirmDelete}>
+                {shownTarget?.kind === "goal" ? "Delete Goal" : "Delete Feature"}
               </Button>
             </DialogFooter>
           </DialogContent>

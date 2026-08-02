@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
+      "Bash(npx shadcn@latest add empty)",
+      "Bash(curl -s http://localhost:3000/docs)",
+      "Bash(npx shadcn@latest add \"https://www.shadcn-ui-blocks.com/r/application-user-profiles-simple.json\")",
+      "Bash(npx shadcn@latest add @shadcnexamples/profile-card)",
+      "Skill(run)",
+      "Skill(run:*)"
+    ]
+  }
+}

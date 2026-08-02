@@ -24,18 +24,18 @@ const data = {
   },
   navMain: [
     {
-      title: "Docs",
-      url: "/docs",
-      icon: (
-        <FileTextIcon
-        />
-      ),
-    },
-    {
       title: "Product Board",
       url: "/product-board",
       icon: (
         <FileChartColumnIcon
+        />
+      ),
+    },
+    {
+      title: "Docs",
+      url: "/docs",
+      icon: (
+        <FileTextIcon
         />
       ),
     },

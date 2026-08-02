@@ -134,7 +134,7 @@ export default function Home() {
       setProjectName("");
       setProjectDescription("");
       setIsDialogOpen(false);
-      router.push("/docs");
+      router.push("/product-board");
     }
   };
 
