@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useHeaderTitle, HeaderActions } from "@/components/header-title-context";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sparkles, Download, Share2, Plus, TrendingUp, BarChart3, Users, Target, Zap, Calendar, AlertCircle, Rocket, Lightbulb, ShieldAlert, ListChecks, DollarSign, Compass, CheckCircle2, ArrowUpRight, Building2 } from "lucide-react";
+import { Sparkles, Download, Share2, Plus, TrendingUp, BarChart3, Users, Target, Calendar, AlertCircle, Rocket, ShieldAlert, ListChecks, DollarSign, Compass, CheckCircle2, Building2 } from "lucide-react";
 import { BentoCard } from "@/components/bento-card";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia, EmptyContent } from "@/components/ui/empty";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, LabelList, PolarAngleAxis, PolarGrid, Radar, RadarChart, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, PolarAngleAxis, PolarGrid, Radar, RadarChart, XAxis, YAxis } from "recharts";
 
 const CREATE_FIELDS: CreateModalField[] = [
   {
@@ -366,27 +366,6 @@ const CUSTOMERS_CHART_CONFIG = {
   },
 } satisfies ChartConfig;
 
-const MARKETSHARE_CHART_DATA = [
-  { competitor: "Us", share: 275 },
-  { competitor: "Mixpanel", share: 200 },
-  { competitor: "Amplitude", share: 187 },
-  { competitor: "Heap", share: 173 },
-  { competitor: "Others", share: 90 },
-];
-
-const MARKETSHARE_CHART_CONFIG = {
-  share: {
-    label: "Market Share",
-    color: "#0ea5e9",
-  },
-  competitor: {
-    label: "Competitor",
-  },
-  label: {
-    color: "var(--background)",
-  },
-} satisfies ChartConfig;
-
 const COMPETITOR_CHART_DATA = [
   { category: "Pricing", us: 85, mixpanel: 60, amplitude: 65 },
   { category: "AI Features", us: 95, mixpanel: 50, amplitude: 55 },
@@ -455,28 +434,6 @@ function CustomerGrowthChart() {
   );
 }
 
-function MarketShareTile() {
-  return (
-    <BentoCard title="Market Share" icon={BarChart3} iconClassName="text-blue-600" description="2024 Analytics Platform Market" className="h-full">
-      <div className="flex h-full min-h-0 flex-col">
-        <ChartContainer config={MARKETSHARE_CHART_CONFIG} className="min-h-[200px] w-full flex-1 !aspect-auto">
-          <BarChart accessibilityLayer data={MARKETSHARE_CHART_DATA} layout="vertical" margin={{ left: 8, right: 40 }}>
-            <CartesianGrid horizontal={false} />
-            <YAxis dataKey="competitor" type="category" tickLine={false} tickMargin={10} axisLine={false} hide />
-            <XAxis dataKey="share" type="number" hide />
-            <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="line" />} />
-            <Bar dataKey="share" fill="var(--color-share)" radius={4}>
-              <LabelList dataKey="competitor" position="insideLeft" offset={8} className="fill-(--color-label)" fontSize={12} />
-              <LabelList dataKey="share" position="right" offset={8} className="fill-foreground" fontSize={12} />
-            </Bar>
-          </BarChart>
-        </ChartContainer>
-        <p className="text-xs text-muted-foreground mt-3 shrink-0">Showing market share by top competitors</p>
-      </div>
-    </BentoCard>
-  );
-}
-
 function CompetitorRadarTile() {
   return (
     <BentoCard title="Competitor Analysis" icon={Target} iconClassName="text-green-600" description="Performance comparison across key metrics" className="h-full">
@@ -497,13 +454,13 @@ function CompetitorRadarTile() {
   );
 }
 
-type TabType = "overview" | "market" | "icp" | "product" | "financial" | "execution";
+type TabType = "problem" | "solution" | "outcome" | "progress";
 
 export default function ProductBoardPage() {
   const [boardGenerated, setBoardGenerated] = useState(false);
   useHeaderTitle(boardGenerated ? DUMMY_PRODUCT_BOARD.productName : "Product Board")
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>("overview");
+  const [activeTab, setActiveTab] = useState<TabType>("problem");
   const [formData, setFormData] = useState<Record<string, string>>({
     productName: "",
     industry: "",
@@ -551,7 +508,7 @@ export default function ProductBoardPage() {
               </EmptyMedia>
               <EmptyTitle>Ready to create a Product Board?</EmptyTitle>
               <EmptyDescription>
-                Share your product vision and let AI generate a complete board including strategy, market analysis, financials, and execution plan.
+                Share your product vision and let AI generate a complete board covering the problem, the solution, the outcome, and the progress.
               </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
@@ -604,117 +561,36 @@ export default function ProductBoardPage() {
 
         {/* Tabs */}
         <div className="flex-1 overflow-hidden flex flex-col">
-          <Tabs defaultValue="overview" value={activeTab} onValueChange={(val) => setActiveTab(val as TabType)} className="flex-1 flex flex-col">
-            <TabsList className="grid w-full grid-cols-6 mb-6">
-              <TabsTrigger value="overview" className="gap-2">
-                <Target className="h-4 w-4" />
-                <span className="hidden sm:inline">Overview</span>
-              </TabsTrigger>
-              <TabsTrigger value="market" className="gap-2">
-                <BarChart3 className="h-4 w-4" />
-                <span className="hidden sm:inline">Market</span>
-              </TabsTrigger>
-              <TabsTrigger value="icp" className="gap-2">
-                <Users className="h-4 w-4" />
-                <span className="hidden sm:inline">ICP</span>
-              </TabsTrigger>
-              <TabsTrigger value="product" className="gap-2">
-                <Sparkles className="h-4 w-4" />
-                <span className="hidden sm:inline">Product</span>
-              </TabsTrigger>
-              <TabsTrigger value="financial" className="gap-2">
-                <TrendingUp className="h-4 w-4" />
-                <span className="hidden sm:inline">Financial</span>
-              </TabsTrigger>
-              <TabsTrigger value="execution" className="gap-2">
-                <Calendar className="h-4 w-4" />
-                <span className="hidden sm:inline">Execution</span>
-              </TabsTrigger>
-            </TabsList>
+          <Tabs defaultValue="problem" value={activeTab} onValueChange={(val) => setActiveTab(val as TabType)} className="flex-1 flex flex-col">
+            {/* Tab bar — mirrors the tab content's width constraint below so both align */}
+            <div className="flex justify-center mb-6">
+              <div className="w-full max-w-4xl px-4">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="problem" className="gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="hidden sm:inline">The Problem</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="solution" className="gap-2">
+                    <Sparkles className="h-4 w-4" />
+                    <span className="hidden sm:inline">The Solution</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="outcome" className="gap-2">
+                    <Target className="h-4 w-4" />
+                    <span className="hidden sm:inline">The Outcome</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="progress" className="gap-2">
+                    <Calendar className="h-4 w-4" />
+                    <span className="hidden sm:inline">The Progress</span>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+            </div>
 
             {/* Tab Contents */}
             <div className="flex-1 overflow-y-auto flex justify-center">
               <div className="w-full max-w-4xl px-4">
-              {/* Overview + Strategy Tab - Bento Grid */}
-              <TabsContent value="overview" className="pb-6">
-                <div className="grid grid-cols-1 lg:grid-cols-6 auto-rows-min gap-4">
-                  {/* Executive Summary — left, tall */}
-                  <BentoCard title="Executive Summary" icon={Target} iconClassName="text-blue-600" className="lg:col-span-3 lg:row-span-2">
-                    <div className="flex flex-col justify-between h-full">
-                      <p className="text-muted-foreground leading-relaxed" style={{ fontSize: "clamp(0.95rem, 1.8vw, 1.35rem)" }}>
-                        {DUMMY_PRODUCT_BOARD.overview.executiveSummary}
-                      </p>
-                      <div className="mt-6">
-                        <Badge variant="outline">{DUMMY_PRODUCT_BOARD.status}</Badge>
-                      </div>
-                    </div>
-                  </BentoCard>
-
-                  {/* Vision — top right */}
-                  <div className="lg:col-span-3 rounded-lg border hover:shadow-md transition-shadow relative overflow-hidden flex flex-col">
-                    <div className="absolute inset-0 z-0">
-                      <MeshGradient
-                        style={{ height: "100%", width: "100%" }}
-                        distortion={0.8}
-                        swirl={0.1}
-                        offsetX={0}
-                        offsetY={0}
-                        scale={1}
-                        rotation={0}
-                        speed={1}
-                        colors={["hsl(216, 30%, 10%)", "hsl(243, 25%, 30%)", "hsl(205, 20%, 35%)", "hsl(211, 20%, 13%)"]}
-                      />
-                    </div>
-                    <div className="relative z-10 flex flex-col flex-1 p-6">
-                      <div className="flex items-center gap-2.5 mb-4">
-                        <Compass className="h-5 w-5 mt-0.5 shrink-0 text-purple-300" />
-                        <h3 className="text-lg font-semibold text-white">Vision</h3>
-                      </div>
-                      <p className="text-base font-medium text-white/90 leading-relaxed flex-1">
-                        {DUMMY_PRODUCT_BOARD.strategy.vision}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Mission Statement — bottom right */}
-                  <div className="lg:col-span-3 rounded-lg border hover:shadow-md transition-shadow relative overflow-hidden flex flex-col">
-                    <div className="absolute inset-0 z-0">
-                      <MeshGradient
-                        style={{ height: "100%", width: "100%" }}
-                        distortion={0.8}
-                        swirl={0.1}
-                        offsetX={0}
-                        offsetY={0}
-                        scale={1}
-                        rotation={0}
-                        speed={1}
-                        colors={["hsl(150, 40%, 8%)", "hsl(160, 35%, 18%)", "hsl(140, 30%, 14%)", "hsl(155, 40%, 10%)"]}
-                      />
-                    </div>
-                    <div className="relative z-10 flex flex-col flex-1 p-6">
-                      <div className="flex items-center gap-2.5 mb-4">
-                        <Rocket className="h-5 w-5 mt-0.5 shrink-0 text-green-300" />
-                        <h3 className="text-lg font-semibold text-white">Mission Statement</h3>
-                      </div>
-                      <p className="text-base font-medium text-white/90 leading-relaxed flex-1">
-                        {DUMMY_PRODUCT_BOARD.strategy.missionStatement}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Market & revenue headline stats — 3 per row */}
-                  {(["marketSize", "revenueTarget", "growthRate"] as const).map((key) => (
-                    <div key={key} className="lg:col-span-2 rounded-lg border bg-muted/50 p-6 hover:shadow-md transition-shadow flex flex-col justify-between">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
-                      <p className="text-2xl font-bold leading-tight">{DUMMY_PRODUCT_BOARD.overview.keyMetrics[key]}</p>
-                    </div>
-                  ))}
-
-                </div>
-              </TabsContent>
-
-              {/* ICP Tab - Bento Grid */}
-              <TabsContent value="icp" className="pb-6">
+              {/* The Problem Tab - who hurts, how, and what the market leaves unsolved */}
+              <TabsContent value="problem" className="pb-6">
                 <div className="grid grid-cols-1 lg:grid-cols-6 auto-rows-min gap-4">
                   {/* ICP Card - User Profile Component (same as Docs page) */}
                   <div className="lg:col-span-3 lg:row-span-2 rounded-lg border hover:shadow-md transition-shadow relative overflow-hidden">
@@ -753,21 +629,21 @@ export default function ProductBoardPage() {
                     </div>
                   </BentoCard>
 
-                  {/* Customer Behaviors */}
-                  <BentoCard title="Customer Behaviors" icon={Users} iconClassName="text-blue-600" className="lg:col-span-3">
+                  {/* Market Gaps — what today's tools leave unsolved */}
+                  <BentoCard title="Market Gaps" icon={Compass} iconClassName="text-blue-600" className="lg:col-span-3">
                     <ul className="space-y-2">
-                      {DUMMY_PRODUCT_BOARD.icp.behaviors.map((behavior, idx) => (
+                      {DUMMY_PRODUCT_BOARD.insights.marketGaps.map((gap, idx) => (
                         <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
-                          <span className="text-blue-600 font-bold">•</span>
-                          <span>{behavior}</span>
+                          <span className="text-blue-600 font-bold">◇</span>
+                          <span>{gap}</span>
                         </li>
                       ))}
                     </ul>
                   </BentoCard>
 
                   {/* Pain Points */}
-                  <BentoCard title="Primary Pain Points" icon={AlertCircle} iconClassName="text-red-600" className="lg:col-span-4">
-                    <div className="space-y-3">
+                  <BentoCard title="Primary Pain Points" icon={AlertCircle} iconClassName="text-red-600" className="lg:col-span-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {DUMMY_PRODUCT_BOARD.icp.painPoints.map((item, idx) => (
                         <div key={idx} className="border rounded-lg p-4">
                           <div className="flex items-start justify-between mb-2 gap-2">
@@ -782,93 +658,111 @@ export default function ProductBoardPage() {
                     </div>
                   </BentoCard>
 
-                  {/* Buying Criteria */}
-                  <BentoCard title="Buying Criteria" icon={CheckCircle2} iconClassName="text-green-600" className="lg:col-span-2">
-                    <ul className="space-y-2">
-                      {DUMMY_PRODUCT_BOARD.icp.buyingCriteria.map((criteria, idx) => (
-                        <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
-                          <span className="text-green-600 font-bold">✓</span>
-                          <span>{criteria}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </BentoCard>
-
-                  {/* Decision Makers */}
-                  <BentoCard title="Key Decision Makers" icon={Users} iconClassName="text-purple-600" className="lg:col-span-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {DUMMY_PRODUCT_BOARD.icp.decisionMakers.map((maker, idx) => (
-                        <div key={idx} className="border rounded-lg relative overflow-hidden">
-                          {/* Background Shader */}
-                          <div className="absolute inset-0 z-0">
-                            <MeshGradient
-                              style={{ height: "100%", width: "100%" }}
-                              distortion={0.8}
-                              swirl={0.1}
-                              offsetX={0}
-                              offsetY={0}
-                              scale={1}
-                              rotation={0}
-                              speed={1}
-                              colors={["hsl(216, 30%, 10%)", "hsl(243, 25%, 30%)", "hsl(205, 20%, 35%)", "hsl(211, 20%, 13%)"]}
-                            />
-                          </div>
-                          <div className="relative z-10 p-4">
-                            <div className="flex items-center justify-between mb-2 gap-2">
-                              <h4 className="font-semibold text-white">{maker.role}</h4>
-                              <Badge variant={maker.influence === 'High' ? 'default' : 'secondary'} className="shrink-0">
-                                {maker.influence}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-white/80">{maker.concern}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </BentoCard>
-
+                  {/* Target Personas — the people living with these pains */}
+                  {DUMMY_PRODUCT_BOARD.marketAnalysis.targetCustomerPersonas.map((persona, idx) => (
+                    <BentoCard key={idx} title={persona.name} icon={Users} iconClassName="text-blue-600" className="lg:col-span-3">
+                      <div className="flex justify-end mb-3">
+                        <Badge variant="secondary" className="shrink-0">{persona.budget}</Badge>
+                      </div>
+                      <div className="space-y-2 text-sm text-muted-foreground">
+                        <p><span className="font-medium text-foreground">Company:</span> {persona.company}</p>
+                        <p><span className="font-medium text-foreground">Pain Points:</span> {persona.pain_points}</p>
+                        <p><span className="font-medium text-foreground">Goals:</span> {persona.goals}</p>
+                      </div>
+                    </BentoCard>
+                  ))}
                 </div>
               </TabsContent>
 
-              {/* Market Analysis Tab - Bento Grid */}
-              <TabsContent value="market" className="pb-6">
+              {/* The Solution Tab - what we're building and why it wins */}
+              <TabsContent value="solution" className="pb-6">
                 <div className="grid grid-cols-1 lg:grid-cols-6 auto-rows-min gap-4">
-                  {/* TAM/SAM/SOM funnel */}
-                  <BentoCard title="Market Size" icon={Target} iconClassName="text-green-600" className="lg:col-span-2">
-                    <div className="space-y-3">
-                      {Object.entries(DUMMY_PRODUCT_BOARD.marketAnalysis.tam).map(([segment, value], idx) => (
-                        <div
-                          key={segment}
-                          className="rounded-lg bg-green-50 dark:bg-green-950 p-3 mx-auto text-center"
-                          style={{ width: `${100 - idx * 18}%` }}
-                        >
-                          <p className="text-xs font-semibold uppercase text-muted-foreground">{segment}</p>
-                          <p className="text-xl font-bold text-green-600">{value}</p>
+                  {/* Value Proposition hero */}
+                  <BentoCard title="Value Proposition" icon={Sparkles} iconClassName="text-green-600" className="lg:col-span-6">
+                    <p className="text-2xl font-bold text-green-600 leading-snug">
+                      {DUMMY_PRODUCT_BOARD.productDefinition.valueProposition}
+                    </p>
+                  </BentoCard>
+
+                  {/* Vision */}
+                  <div className="lg:col-span-3 rounded-lg border hover:shadow-md transition-shadow relative overflow-hidden flex flex-col">
+                    <div className="absolute inset-0 z-0">
+                      <MeshGradient
+                        style={{ height: "100%", width: "100%" }}
+                        distortion={0.8}
+                        swirl={0.1}
+                        offsetX={0}
+                        offsetY={0}
+                        scale={1}
+                        rotation={0}
+                        speed={1}
+                        colors={["hsl(216, 30%, 10%)", "hsl(243, 25%, 30%)", "hsl(205, 20%, 35%)", "hsl(211, 20%, 13%)"]}
+                      />
+                    </div>
+                    <div className="relative z-10 flex flex-col flex-1 p-6">
+                      <div className="flex items-center gap-2.5 mb-4">
+                        <Compass className="h-5 w-5 mt-0.5 shrink-0 text-purple-300" />
+                        <h3 className="text-lg font-semibold text-white">Vision</h3>
+                      </div>
+                      <p className="text-base font-medium text-white/90 leading-relaxed flex-1">
+                        {DUMMY_PRODUCT_BOARD.strategy.vision}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Mission Statement */}
+                  <div className="lg:col-span-3 rounded-lg border hover:shadow-md transition-shadow relative overflow-hidden flex flex-col">
+                    <div className="absolute inset-0 z-0">
+                      <MeshGradient
+                        style={{ height: "100%", width: "100%" }}
+                        distortion={0.8}
+                        swirl={0.1}
+                        offsetX={0}
+                        offsetY={0}
+                        scale={1}
+                        rotation={0}
+                        speed={1}
+                        colors={["hsl(150, 40%, 8%)", "hsl(160, 35%, 18%)", "hsl(140, 30%, 14%)", "hsl(155, 40%, 10%)"]}
+                      />
+                    </div>
+                    <div className="relative z-10 flex flex-col flex-1 p-6">
+                      <div className="flex items-center gap-2.5 mb-4">
+                        <Rocket className="h-5 w-5 mt-0.5 shrink-0 text-green-300" />
+                        <h3 className="text-lg font-semibold text-white">Mission Statement</h3>
+                      </div>
+                      <p className="text-base font-medium text-white/90 leading-relaxed flex-1">
+                        {DUMMY_PRODUCT_BOARD.strategy.missionStatement}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Core Features */}
+                  <BentoCard title="Core Features" icon={ListChecks} className="lg:col-span-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {DUMMY_PRODUCT_BOARD.productDefinition.coreFeatures.map((feature, idx) => (
+                        <div key={idx} className="border rounded-lg p-4">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <h4 className="font-semibold text-sm">{feature.name}</h4>
+                            <Badge variant={feature.priority === 'P0' ? 'default' : 'secondary'} className="shrink-0">
+                              {feature.priority}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{feature.userValue}</p>
                         </div>
                       ))}
                     </div>
                   </BentoCard>
 
-                  {/* Market Share chart */}
-                  <div className="lg:col-span-2">
-                    <MarketShareTile />
-                  </div>
-
-                  {/* Competitor Analysis radar chart */}
-                  <div className="lg:col-span-2">
-                    <CompetitorRadarTile />
-                  </div>
-
-                  {/* Market Trends */}
-                  <BentoCard title="Market Trends" icon={TrendingUp} iconClassName="text-orange-600" className="lg:col-span-2 lg:row-span-2">
-                    <div className="space-y-3">
-                      {DUMMY_PRODUCT_BOARD.marketAnalysis.marketTrends.map((trend, idx) => (
-                        <div key={idx} className="flex items-start gap-3 pb-3 border-b last:border-b-0 last:pb-0">
-                          <span className="text-orange-600 font-bold">⬆</span>
-                          <span className="text-sm text-muted-foreground">{trend}</span>
-                        </div>
+                  {/* Jobs to be Done */}
+                  <BentoCard title="Jobs to be Done" icon={Target} iconClassName="text-blue-600" className="lg:col-span-2">
+                    <ul className="space-y-2">
+                      {DUMMY_PRODUCT_BOARD.productDefinition.jobsToBeDone.map((job, idx) => (
+                        <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
+                          <span className="text-blue-600 font-bold">✓</span>
+                          <span>{job}</span>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </BentoCard>
 
                   {/* Competitive Landscape — merged with our head-to-head positioning */}
@@ -902,104 +796,22 @@ export default function ProductBoardPage() {
                     </div>
                   </BentoCard>
 
-                  {/* Go-to-Market Strategy */}
-                  <BentoCard title="Go-to-Market Strategy" icon={Zap} iconClassName="text-amber-600" className="lg:col-span-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <h4 className="text-sm font-bold mb-3">Channels</h4>
-                        <ul className="space-y-2">
-                          {DUMMY_PRODUCT_BOARD.strategy.gtmStrategy.channels.map((channel, idx) => (
-                            <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
-                              <span className="text-green-600 font-bold">→</span>
-                              <span>{channel}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold mb-3">Target Segments</h4>
-                        <ul className="space-y-2">
-                          {DUMMY_PRODUCT_BOARD.strategy.gtmStrategy.targetSegments.map((segment, idx) => (
-                            <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
-                              <span className="text-blue-600 font-bold">◆</span>
-                              <span>{segment}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  </BentoCard>
-
-                  {/* Positioning + Market Gaps */}
-                  <div className="lg:col-span-2 rounded-lg border bg-muted/50 p-6 hover:shadow-md transition-shadow flex flex-col justify-center">
-                    <h4 className="text-sm font-bold mb-2">Positioning</h4>
-                    <p className="text-lg font-semibold text-purple-600 leading-snug mb-6">{DUMMY_PRODUCT_BOARD.strategy.gtmStrategy.positioning}</p>
-                    <h4 className="text-sm font-bold mb-2">Market Gaps</h4>
-                    <ul className="space-y-2">
-                      {DUMMY_PRODUCT_BOARD.insights.marketGaps.map((gap, idx) => (
-                        <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
-                          <span className="text-blue-600 font-bold">◇</span>
-                          <span>{gap}</span>
-                        </li>
-                      ))}
-                    </ul>
+                  {/* Competitor Analysis radar chart */}
+                  <div className="lg:col-span-2">
+                    <CompetitorRadarTile />
                   </div>
 
-                  {/* Target Personas — moved from ICP (market analysis data) */}
-                  {DUMMY_PRODUCT_BOARD.marketAnalysis.targetCustomerPersonas.map((persona, idx) => (
-                    <BentoCard key={idx} title={persona.name} icon={Users} iconClassName="text-blue-600" className="lg:col-span-3">
-                      <div className="flex justify-end mb-3">
-                        <Badge variant="secondary" className="shrink-0">{persona.budget}</Badge>
-                      </div>
-                      <div className="space-y-2 text-sm text-muted-foreground">
-                        <p><span className="font-medium text-foreground">Company:</span> {persona.company}</p>
-                        <p><span className="font-medium text-foreground">Pain Points:</span> {persona.pain_points}</p>
-                        <p><span className="font-medium text-foreground">Goals:</span> {persona.goals}</p>
-                      </div>
-                    </BentoCard>
-                  ))}
+                  {/* Positioning */}
+                  <div className="lg:col-span-6 rounded-lg border bg-muted/50 p-6 hover:shadow-md transition-shadow">
+                    <h4 className="text-sm font-bold mb-2">Positioning</h4>
+                    <p className="text-lg font-semibold text-purple-600 leading-snug">{DUMMY_PRODUCT_BOARD.strategy.gtmStrategy.positioning}</p>
+                  </div>
                 </div>
               </TabsContent>
 
-              {/* Product Definition Tab - Bento Grid */}
-              <TabsContent value="product" className="pb-6">
+              {/* The Outcome Tab - the results this product is accountable for */}
+              <TabsContent value="outcome" className="pb-6">
                 <div className="grid grid-cols-1 lg:grid-cols-6 auto-rows-min gap-4">
-                  {/* Value Proposition hero */}
-                  <BentoCard title="Value Proposition" icon={Sparkles} iconClassName="text-green-600" className="lg:col-span-6">
-                    <p className="text-2xl font-bold text-green-600 leading-snug">
-                      {DUMMY_PRODUCT_BOARD.productDefinition.valueProposition}
-                    </p>
-                  </BentoCard>
-
-                  {/* Core Features */}
-                  <BentoCard title="Core Features" icon={ListChecks} className="lg:col-span-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {DUMMY_PRODUCT_BOARD.productDefinition.coreFeatures.map((feature, idx) => (
-                        <div key={idx} className="border rounded-lg p-4">
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <h4 className="font-semibold text-sm">{feature.name}</h4>
-                            <Badge variant={feature.priority === 'P0' ? 'default' : 'secondary'} className="shrink-0">
-                              {feature.priority}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground">{feature.userValue}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </BentoCard>
-
-                  {/* Jobs to be Done */}
-                  <BentoCard title="Jobs to be Done" icon={Target} iconClassName="text-blue-600" className="lg:col-span-2">
-                    <ul className="space-y-2">
-                      {DUMMY_PRODUCT_BOARD.productDefinition.jobsToBeDone.map((job, idx) => (
-                        <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
-                          <span className="text-blue-600 font-bold">✓</span>
-                          <span>{job}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </BentoCard>
-
                   {/* Success Criteria */}
                   <BentoCard title="Success Criteria" icon={CheckCircle2} iconClassName="text-purple-600" className="lg:col-span-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1012,52 +824,29 @@ export default function ProductBoardPage() {
                     </div>
                   </BentoCard>
 
-                  {/* Key Opportunities — moved from Overview (product roadmap-facing) */}
-                  <BentoCard title="Key Opportunities" icon={Lightbulb} iconClassName="text-green-600" className="lg:col-span-3">
-                    <ul className="space-y-3">
-                      {DUMMY_PRODUCT_BOARD.insights.keyOpportunities.map((opp, idx) => (
-                        <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2 p-3 bg-green-50 dark:bg-green-950 rounded-lg">
-                          <span className="text-green-600 font-bold">✦</span>
-                          <span>{opp}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </BentoCard>
-
-                  {/* Growth Strategies — moved from Overview (product roadmap-facing) */}
-                  <BentoCard title="Growth Strategies" icon={ArrowUpRight} iconClassName="text-purple-600" className="lg:col-span-3">
-                    <ul className="space-y-3">
-                      {DUMMY_PRODUCT_BOARD.insights.growthStrategies.map((strategy, idx) => (
-                        <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2 p-3 bg-purple-50 dark:bg-purple-950 rounded-lg">
-                          <span className="text-purple-600 font-bold">→</span>
-                          <span>{strategy}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </BentoCard>
-                </div>
-              </TabsContent>
-
-              {/* Financial Tab - Bento Grid */}
-              <TabsContent value="financial" className="pb-6">
-                <div className="grid grid-cols-1 lg:grid-cols-6 auto-rows-min gap-4">
-                  {/* Unit economics stat cards */}
-                  {Object.entries(DUMMY_PRODUCT_BOARD.financial.unitEconomics).map(([metric, value]) => (
-                    <div key={metric} className="lg:col-span-2 rounded-lg border bg-muted/50 p-6 hover:shadow-md transition-shadow text-center">
-                      <DollarSign className="h-5 w-5 text-green-600 mx-auto mb-2" />
-                      <p className="text-2xl font-bold mb-1">{value}</p>
-                      <p className="text-xs font-semibold text-muted-foreground uppercase">{metric.replace(/_/g, ' ')}</p>
-                    </div>
-                  ))}
-
                   {/* KPI targets — operational performance goals */}
-                  {Object.entries(DUMMY_PRODUCT_BOARD.strategy.kpis).map(([metric, value]) => (
-                    <div key={metric} className="lg:col-span-2 rounded-lg border bg-muted/50 p-6 hover:shadow-md transition-shadow text-center">
-                      <Target className="h-5 w-5 text-blue-600 mx-auto mb-2" />
-                      <p className="text-2xl font-bold mb-1">{value}</p>
-                      <p className="text-xs font-semibold text-muted-foreground uppercase">{metric.replace(/_/g, ' ')}</p>
+                  <BentoCard title="KPI Targets" icon={Target} iconClassName="text-blue-600" className="lg:col-span-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      {Object.entries(DUMMY_PRODUCT_BOARD.strategy.kpis).map(([metric, value]) => (
+                        <div key={metric} className="border rounded-lg p-4 text-center">
+                          <p className="text-2xl font-bold mb-1">{value}</p>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase">{metric.replace(/_/g, ' ')}</p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </BentoCard>
+
+                  {/* Unit economics */}
+                  <BentoCard title="Unit Economics" icon={DollarSign} iconClassName="text-green-600" className="lg:col-span-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      {Object.entries(DUMMY_PRODUCT_BOARD.financial.unitEconomics).map(([metric, value]) => (
+                        <div key={metric} className="border rounded-lg p-4 text-center">
+                          <p className="text-2xl font-bold mb-1">{value}</p>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase">{metric.replace(/_/g, ' ')}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </BentoCard>
 
                   {/* ARR projection chart */}
                   <div className="lg:col-span-3">
@@ -1068,31 +857,6 @@ export default function ProductBoardPage() {
                   <div className="lg:col-span-3">
                     <CustomerGrowthChart />
                   </div>
-
-                  {/* Revenue model + pricing tiers */}
-                  <BentoCard title="Revenue Model & Pricing" icon={DollarSign} iconClassName="text-green-600" description={DUMMY_PRODUCT_BOARD.financial.revenueModel} className="lg:col-span-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {Object.entries(DUMMY_PRODUCT_BOARD.financial.pricingStrategy).map(([tier, details], idx) => (
-                        <div key={tier} className={`border rounded-lg p-5 ${idx === 1 ? 'ring-2 ring-green-500/40' : ''}`}>
-                          <div className="flex items-center justify-between mb-4">
-                            <h4 className="font-bold capitalize">{tier}</h4>
-                            {idx === 1 && <Badge>Popular</Badge>}
-                          </div>
-                          <p className="text-2xl font-bold mb-4">{details.price}</p>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Seats</span>
-                              <span className="font-semibold">{details.seats}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Monthly Events</span>
-                              <span className="font-semibold">{details.monthlyEvents}</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </BentoCard>
 
                   {/* Financial Projections detail */}
                   <BentoCard title="Financial Projections" icon={TrendingUp} iconClassName="text-green-600" className="lg:col-span-6">
@@ -1115,8 +879,8 @@ export default function ProductBoardPage() {
                 </div>
               </TabsContent>
 
-              {/* Execution Tab - Bento Grid */}
-              <TabsContent value="execution" className="pb-6">
+              {/* The Progress Tab - phases, dependencies and what stands in the way */}
+              <TabsContent value="progress" className="pb-6">
                 <div className="grid grid-cols-1 lg:grid-cols-6 auto-rows-min gap-4">
                   {/* Phases - vertical timeline */}
                   <BentoCard title="Development Phases" icon={Calendar} iconClassName="text-blue-600" className="lg:col-span-4">
