@@ -174,6 +174,7 @@ export default function Home() {
               <Card
                 key={project.id}
                 className="cursor-pointer hover:shadow-md transition-all hover:border-primary/50 group"
+                onClick={() => router.push("/product-board")}
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-start gap-2">
