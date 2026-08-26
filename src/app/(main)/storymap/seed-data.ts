@@ -1,15 +1,62 @@
 import {
+  addDaysISO,
   BACKLOG_SPRINT_ID,
   cellKey,
+  formatSprintWindow,
   type Sprint,
   type StoryMap,
 } from "./storymap";
 
+// Each seed sprint runs 2 weeks back-to-back from a fixed anchor Monday.
+function seedSprint(
+  id: string,
+  sprintNumber: number,
+  name: string,
+  outcome: string,
+  startDate: string
+): Sprint {
+  const endDate = addDaysISO(startDate, 13);
+  return {
+    id,
+    sprintNumber,
+    name,
+    outcome,
+    startDate,
+    endDate,
+    window: formatSprintWindow(startDate, endDate),
+  };
+}
+
+// Latest sprint first — new sprints are prepended, so the seed mirrors that order.
 export const initialSprints: Sprint[] = [
-  { id: "sprint-1", name: "Sprint 1", window: "Week 1-2" },
-  { id: "sprint-2", name: "Sprint 2", window: "Week 3-4" },
-  { id: "sprint-3", name: "Sprint 3", window: "Week 5-6" },
-  { id: "sprint-4", name: "Sprint 4", window: "Week 7-8" },
+  seedSprint(
+    "sprint-4",
+    4,
+    "Dashboards & Alerts",
+    "Client can build a live dashboard and get notified when a metric crosses a threshold",
+    "2026-06-29"
+  ),
+  seedSprint(
+    "sprint-3",
+    3,
+    "Data Integration",
+    "Client can connect a data source and map its fields without engineering help",
+    "2026-06-15"
+  ),
+  seedSprint(
+    "sprint-2",
+    2,
+    "Team Onboarding",
+    "Client can create a workspace and invite their whole team in under 5 minutes",
+    "2026-06-01"
+  ),
+  seedSprint(
+    "sprint-1",
+    1,
+    "Account Setup",
+    "Client can sign up, verify their email, and log back in securely",
+    "2026-05-18"
+  ),
 ];
 
 export const initialStoryMap: StoryMap = {

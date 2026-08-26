@@ -40,8 +40,8 @@ const data = {
       ),
     },
     {
-      title: "Tasks",
-      url: "/tasks",
+      title: "Storymap",
+      url: "/storymap",
       icon: (
         <ListIcon
         />

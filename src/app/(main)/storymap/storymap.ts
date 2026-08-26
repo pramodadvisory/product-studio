@@ -42,8 +42,12 @@ export type Feature = {
 
 export type Sprint = {
   id: string;
+  sprintNumber: number; // fixed at creation, never user-editable
   name: string;
+  outcome: string; // what the client gets by the end of this sprint
   window: string;
+  startDate: string; // ISO yyyy-mm-dd
+  endDate: string; // ISO yyyy-mm-dd
 };
 
 export type StoryItem = {
@@ -63,6 +67,75 @@ export type StoryMap = {
   features: Feature[];
   storiesByCell: StoriesByCell;
 };
+
+// ─── Sprint dates ─────────────────────────────────────────────────────────────
+// Sprints are stored newest-first (see page.tsx), so sprints[0] is the most
+// recently added row — the one a new sprint's default start date chains off of.
+
+function parseISODate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, (month ?? 1) - 1, day ?? 1);
+}
+
+function toISODate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+// Sunday (0) and Saturday (6) are skipped so sprints default to starting on a
+// business day.
+function firstWeekdayOnOrAfter(date: Date) {
+  const next = new Date(date);
+  while (next.getDay() === 0 || next.getDay() === 6) {
+    next.setDate(next.getDate() + 1);
+  }
+  return next;
+}
+
+// Next sprint's suggested start: the first weekday after the latest sprint's
+// end date, or today (skipped forward to a weekday) if there is no sprint yet.
+export function suggestNextStartDate(sprints: Sprint[], today: Date): string {
+  const latest = sprints[0];
+  if (!latest?.endDate) return toISODate(firstWeekdayOnOrAfter(today));
+
+  const dayAfterEnd = parseISODate(latest.endDate);
+  dayAfterEnd.setDate(dayAfterEnd.getDate() + 1);
+  return toISODate(firstWeekdayOnOrAfter(dayAfterEnd));
+}
+
+export function addDaysISO(startDate: string, days: number) {
+  const date = parseISODate(startDate);
+  date.setDate(date.getDate() + days);
+  return toISODate(date);
+}
+
+const WINDOW_LABEL_FORMAT: Intl.DateTimeFormatOptions = {
+  month: "short",
+  day: "numeric",
+};
+
+// "Aug 5 – Aug 18" (or "Aug 5 – 18" when both dates share a month).
+export function formatSprintWindow(startDate: string, endDate: string) {
+  const start = parseISODate(startDate);
+  const end = parseISODate(endDate);
+  const startLabel = start.toLocaleDateString("en-US", WINDOW_LABEL_FORMAT);
+  const endLabel =
+    start.getMonth() === end.getMonth()
+      ? String(end.getDate())
+      : end.toLocaleDateString("en-US", WINDOW_LABEL_FORMAT);
+  return `${startLabel} – ${endLabel}`;
+}
+
+export const SPRINT_OUTCOME_MAX_LENGTH = 100;
+
+// Highest sprint number among existing sprints, plus one — fixed and
+// non-editable, so it keeps counting up regardless of deletions and never
+// collides even if the user renames a sprint.
+export function nextSprintNumber(sprints: Sprint[]) {
+  return sprints.reduce((max, sprint) => Math.max(max, sprint.sprintNumber), 0) + 1;
+}
 
 // ─── Cell keys ────────────────────────────────────────────────────────────────
 const CELL_SEPARATOR = "::";
@@ -173,6 +246,14 @@ export function storyCountForFeature(map: StoryMap, featureId: string) {
   );
 }
 
+export function storyCountForSprint(map: StoryMap, sprintId: string) {
+  return Object.entries(map.storiesByCell).reduce(
+    (total, [key, stories]) =>
+      splitCellKey(key)?.sprintId === sprintId ? total + stories.length : total,
+    0
+  );
+}
+
 export function goalDeleteImpact(map: StoryMap, goalId: string): DeleteImpact {
   const goalFeatures = map.features.filter(
     (feature) => feature.goalId === goalId
@@ -247,6 +328,63 @@ export function deleteFeature(
     ).filter((feature) => feature.id !== featureId),
     storiesByCell,
   });
+}
+
+// Deleting a sprint relocates its stories to the Backlog row (the sprint
+// axis's fixed fallback — there's only ever one, unlike a feature delete's
+// destination picker), preserving each story's feature column.
+export function deleteSprintStories(map: StoryMap, sprintId: string): StoryMap {
+  if (sprintId === BACKLOG_SPRINT_ID) return map;
+
+  const storiesByCell: StoriesByCell = {};
+  const relocatedByFeature = new Map<string, StoryItem[]>();
+
+  for (const [key, stories] of Object.entries(map.storiesByCell)) {
+    const parsed = splitCellKey(key);
+    if (parsed?.sprintId !== sprintId) {
+      storiesByCell[key] = stories;
+      continue;
+    }
+    if (stories.length > 0) relocatedByFeature.set(parsed.featureId, stories);
+  }
+
+  for (const [featureId, stories] of relocatedByFeature) {
+    const destinationKey = cellKey(BACKLOG_SPRINT_ID, featureId);
+    storiesByCell[destinationKey] = [
+      ...(storiesByCell[destinationKey] ?? []),
+      ...stories,
+    ];
+  }
+
+  return prune({ ...map, storiesByCell });
+}
+
+export function deleteSprint(sprints: Sprint[], sprintId: string): Sprint[] {
+  return sprints.filter((sprint) => sprint.id !== sprintId);
+}
+
+export function updateSprint(
+  sprints: Sprint[],
+  sprintId: string,
+  patch: {
+    name: string;
+    outcome: string;
+    startDate: string;
+    endDate: string;
+  }
+): Sprint[] {
+  return sprints.map((sprint) =>
+    sprint.id === sprintId
+      ? {
+          ...sprint,
+          name: patch.name,
+          outcome: patch.outcome,
+          startDate: patch.startDate,
+          endDate: patch.endDate,
+          window: formatSprintWindow(patch.startDate, patch.endDate),
+        }
+      : sprint
+  );
 }
 
 export function deleteStory(

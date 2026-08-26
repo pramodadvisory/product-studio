@@ -16,10 +16,12 @@ export type Confidence = "assumption" | "validated" | "decided";
 export type BlockSize = "third" | "half" | "two-thirds" | "full";
 
 /**
- * Visual tier. The single biggest lever on how the page reads:
- * - `hero`  — large type on a gradient, for the handful of statements that matter
- * - `card`  — bordered tile, for primary evidence
- * - `plain` — no border, sits directly on the page, for supporting detail
+ * Visual tier. The single biggest lever on how the page reads. All three are a
+ * *contained* shape — nothing sits fully naked on the page background, which is
+ * what read as broken rather than deliberate — and differ by fill and weight:
+ * - `hero`  — gradient fill, white text, for the handful of statements that matter
+ * - `card`  — solid border + tinted fill, for primary evidence
+ * - `plain` — thin border, no fill, for supporting detail
  */
 export type BlockEmphasis = "hero" | "card" | "plain";
 
@@ -27,6 +29,8 @@ type BlockBase = {
   id: string;
   /** Heading. Not user-editable by design. */
   title: string;
+  /** One-line editable explanation of what this block is and why it's here. */
+  description?: string;
   size: BlockSize;
   emphasis: BlockEmphasis;
   confidence?: Confidence;
@@ -108,17 +112,72 @@ export type Block =
 
 export type BlockType = Block["type"];
 
+/**
+ * A named cluster of blocks inside a section. Groups are what the in-tab table
+ * of contents lists: a tab with 10 blocks is unscannable, the same tab with 3
+ * groups is. Titles are fixed vocabulary, same reasoning as block titles.
+ */
+export type Group = {
+  id: string;
+  title: string;
+  /** One-line editable explanation of what this group of blocks covers. Always set — never left to a placeholder. */
+  description: string;
+  blocks: Block[];
+};
+
 export type Section = {
   id: string;
   /** Heading. Not user-editable by design. */
   title: string;
-  /** Editable one-line framing for the section. */
-  summary: string;
-  blocks: Block[];
+  groups: Group[];
 };
+
+/** Flattens a section's blocks — for counting, filtering and lookups. */
+export function sectionBlocks(section: Section): Block[] {
+  return section.groups.flatMap((g) => g.blocks);
+}
+
+/**
+ * Guards against rendering a persisted document written by an older version of
+ * this schema. Checks the version *and* the structure, since a doc saved before
+ * `schemaVersion` existed has no version field at all.
+ */
+export function isBoardCompatible(value: unknown): value is Board {
+  if (!value || typeof value !== "object") return false;
+  const board = value as Partial<Board>;
+  if (board.schemaVersion !== BOARD_SCHEMA_VERSION) return false;
+  if (!Array.isArray(board.sections) || !Array.isArray(board.headline)) return false;
+  return board.sections.every(
+    (section) =>
+      section &&
+      Array.isArray(section.groups) &&
+      section.groups.every((group) => group && Array.isArray(group.blocks))
+  );
+}
+
+/**
+ * Bump whenever the persisted document changes in a way a stored copy can't
+ * satisfy. Stored boards on any other version are discarded and reseeded.
+ *
+ *   v1 → v2  `Section.blocks` became `Section.groups` (rendering v1 crashed)
+ *   v2 → v3  added "The Market" section; a v2 board would never show the tab
+ *   v3 → v4  filled in default `description` on every block; a v3 board had
+ *            them blank and showed the generic empty-state placeholder
+ *   v4 → v5  renamed group "Who we serve" to "Customer Information"
+ *   v5 → v6  removed `Section.summary` — the per-tab description line was
+ *            dropped from the page
+ *   v6 → v7  "Firmographics" and "Target Personas" in Customer Information
+ *            changed from `third`/`two-thirds` (same row) to `full` each
+ *            (separate rows)
+ *
+ * Note this trades away saved edits on every bump. Fine while the seed is demo
+ * content; once boards hold real data this needs per-version migration instead.
+ */
+export const BOARD_SCHEMA_VERSION = 7;
 
 export type Board = {
   id: string;
+  schemaVersion: number;
   productName: string;
   status: string;
   /** The 4-6 numbers worth seeing before you scroll. */

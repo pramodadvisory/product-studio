@@ -51,8 +51,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
   Archive,
   ArrowLeftRight,
+  CalendarIcon,
   CalendarRange,
   ChevronLeft,
   ChevronRight,
@@ -61,20 +69,26 @@ import {
   Inbox,
   Layers,
   MoreVertical,
+  Pencil,
   Plus,
   Target,
   Trash2,
 } from "lucide-react";
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { initialSprints, initialStoryMap } from "./seed-data";
 import { useColumnFlip } from "./use-column-flip";
 import {
+  addDaysISO,
   BACKLOG_SPRINT_ID,
   cellKey,
   deleteFeature,
   deleteGoal,
+  deleteSprint,
+  deleteSprintStories,
   deleteStory,
   featuresForGoal,
+  formatSprintWindow,
   goalDeleteImpact,
   isReservedFeatureId,
   isReservedGoalId,
@@ -82,10 +96,15 @@ import {
   moveFeatureWithinGoal,
   moveGoal,
   moveStory,
+  nextSprintNumber,
   orderedGoals,
+  SPRINT_OUTCOME_MAX_LENGTH,
   storyCountForFeature,
+  storyCountForSprint,
+  suggestNextStartDate,
   UNASSIGNED_FEATURE_ID,
   UNASSIGNED_GOAL_ID,
+  updateSprint,
   type Feature,
   type Sprint,
   type StoryItem,
@@ -121,6 +140,7 @@ const HEADER_BUTTON_CLASS =
 type DeleteTarget =
   | { kind: "goal"; id: string }
   | { kind: "feature"; id: string }
+  | { kind: "sprint"; id: string }
   | null;
 
 function pluralize(count: number, singular: string, plural = `${singular}s`) {
@@ -339,9 +359,105 @@ function SortableStoryCard({
   );
 }
 
+// ─── Date helpers ───────────────────────────────────────────────────────────
+// Dates cross a local-Date/ISO-string boundary throughout this file, so every
+// conversion uses local getters (parseISODateLocal/toISODateLocal) — never
+// toISOString(), which floors to UTC and silently shifts the date back a day
+// in any positive UTC offset.
+function parseISODateLocal(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, (month ?? 1) - 1, day ?? 1);
+}
+
+function toISODateLocal(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+// Inclusive day count between two ISO dates (a same-day span is 1 day).
+function daySpan(start: string, end: string) {
+  const days = Math.round(
+    (parseISODateLocal(end).getTime() - parseISODateLocal(start).getTime()) / 86_400_000
+  );
+  return days + 1;
+}
+
+// ─── StartDateField ─────────────────────────────────────────────────────────
+// A single-date popover picker for the sprint's start date. Weekends are
+// grayed out (still pickable — sprints occasionally do start on a weekend —
+// but visually discouraged as the default path) since a sprint almost always
+// starts on a business day.
+function StartDateField({
+  id,
+  value,
+  onChange,
+}: {
+  id?: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const selected = value ? parseISODateLocal(value) : undefined;
+
+  return (
+    <Popover>
+      <PopoverTrigger
+        id={id}
+        className={cn(
+          "flex h-9 w-full items-center gap-2 rounded-lg border border-input bg-transparent px-3 text-sm",
+          !selected && "text-muted-foreground"
+        )}
+      >
+        <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        {selected ? format(selected, "MMM d, yyyy") : "Pick a start date"}
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={selected}
+          defaultMonth={selected}
+          onSelect={(day) => day && onChange(toISODateLocal(day))}
+          modifiers={{ weekend: (day) => day.getDay() === 0 || day.getDay() === 6 }}
+          modifiersClassNames={{ weekend: "text-muted-foreground/40" }}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// ─── DurationPreviewCalendar ────────────────────────────────────────────────
+// A read-only calendar showing the resulting start–end range once a start
+// date and duration are both picked — nothing here is clickable, it exists
+// purely so the user can see the actual days their sprint spans before
+// confirming, without a second date field to keep in sync.
+function DurationPreviewCalendar({ start, end }: { start: string; end: string }) {
+  if (!start || !end) return null;
+  const from = parseISODateLocal(start);
+  const to = parseISODateLocal(end);
+  // A sprint spanning into a second calendar month would otherwise hide its
+  // end date off-screen (only the start month renders by default) — show
+  // both months whenever the range actually crosses one.
+  const spansTwoMonths =
+    from.getFullYear() !== to.getFullYear() || from.getMonth() !== to.getMonth();
+
+  return (
+    <div className="pointer-events-none max-h-80 overflow-y-auto rounded-lg border border-border/60">
+      <Calendar
+        mode="range"
+        selected={{ from, to }}
+        defaultMonth={from}
+        numberOfMonths={spansTwoMonths ? 2 : 1}
+        onSelect={() => {}}
+        classNames={{ months: "flex flex-col gap-4" }}
+      />
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
-export default function TasksPage() {
-  useHeaderTitle("Tasks & Story Map");
+export default function StorymapPage() {
+  useHeaderTitle("Storymap");
 
   const [map, setMap] = useState<StoryMap>(initialStoryMap);
   const [sprints, setSprints] = useState<Sprint[]>(initialSprints);
@@ -359,8 +475,16 @@ export default function TasksPage() {
   }>({ open: false, target: null, snapshot: initialStoryMap });
   const [storyDestinationId, setStoryDestinationId] = useState(UNASSIGNED_FEATURE_ID);
 
+  // null while creating a new sprint; set to a sprint id while the "sprint"
+  // modal is instead editing that sprint's details — the two share every
+  // field below, only the submit handler and dialog copy differ.
+  const [editingSprintId, setEditingSprintId] = useState<string | null>(null);
+  const [newSprintNumber, setNewSprintNumber] = useState(1);
   const [newSprintName, setNewSprintName] = useState("");
-  const [newSprintWindow, setNewSprintWindow] = useState("");
+  const [newSprintOutcome, setNewSprintOutcome] = useState("");
+  const [newSprintStart, setNewSprintStart] = useState("");
+  const [newSprintEnd, setNewSprintEnd] = useState("");
+  const [newSprintDuration, setNewSprintDuration] = useState<string | null>("2");
   const [newGoalTitle, setNewGoalTitle] = useState("");
   const [newFeatureTitle, setNewFeatureTitle] = useState("");
   const [newStoryText, setNewStoryText] = useState("");
@@ -448,17 +572,71 @@ export default function TasksPage() {
   };
 
   // ─── CRUD ──────────────────────────────────────────────────────────────────
-  const addSprint = () => {
+  // Seeds the dialog with the fixed next sprint number, a suggested start date
+  // (chained off the latest sprint), and a 2-week default span, so the common
+  // case is naming the sprint, stating its outcome, and confirming.
+  const openAddSprintDialog = () => {
+    const start = suggestNextStartDate(sprints, new Date());
+    setEditingSprintId(null);
+    setNewSprintNumber(nextSprintNumber(sprints));
+    setNewSprintName("");
+    setNewSprintOutcome("");
+    setNewSprintDuration("2");
+    setNewSprintStart(start);
+    setNewSprintEnd(addDaysISO(start, 13));
+    setActiveModal("sprint");
+  };
+
+  // Same dialog, pre-filled from the sprint being edited — the number stays
+  // fixed (read-only in the form) since it's identity, not a detail.
+  const openEditSprintDialog = (sprint: Sprint) => {
+    setEditingSprintId(sprint.id);
+    setNewSprintNumber(sprint.sprintNumber);
+    setNewSprintName(sprint.name);
+    setNewSprintOutcome(sprint.outcome);
+    setNewSprintDuration(null);
+    setNewSprintStart(sprint.startDate);
+    setNewSprintEnd(sprint.endDate);
+    setActiveModal("sprint");
+  };
+
+  const applySprintDuration = (weeks: string, start = newSprintStart) => {
+    setNewSprintDuration(weeks);
+    if (start) setNewSprintEnd(addDaysISO(start, Number(weeks) * 7 - 1));
+  };
+
+  const saveSprint = () => {
     const name = newSprintName.trim();
-    if (!name) return;
+    const outcome = newSprintOutcome.trim();
+    if (!name || !outcome || !newSprintStart || !newSprintEnd) return;
+
+    if (editingSprintId) {
+      setSprints((prev) =>
+        updateSprint(prev, editingSprintId, {
+          name,
+          outcome,
+          startDate: newSprintStart,
+          endDate: newSprintEnd,
+        })
+      );
+      setActiveModal(null);
+      return;
+    }
+
     const id = `sprint-${Date.now()}`;
     setSprints((prev) => [
+      {
+        id,
+        sprintNumber: newSprintNumber,
+        name,
+        outcome,
+        startDate: newSprintStart,
+        endDate: newSprintEnd,
+        window: formatSprintWindow(newSprintStart, newSprintEnd),
+      },
       ...prev,
-      { id, name, window: newSprintWindow.trim() || "Upcoming" },
     ]);
     setSelectedSprintId(id);
-    setNewSprintName("");
-    setNewSprintWindow("");
     setActiveModal(null);
   };
 
@@ -565,7 +743,7 @@ export default function TasksPage() {
           ? `${pluralize(impact.featureCount, "feature")} moved to Unassigned.`
           : undefined
       );
-    } else {
+    } else if (target.kind === "feature") {
       const feature = features.find((f) => f.id === target.id);
       const storyCount = storyCountForFeature(map, target.id);
       const destinationTitle =
@@ -579,6 +757,26 @@ export default function TasksPage() {
           ? `${pluralize(storyCount, "story", "stories")} moved to ${destinationTitle}, sprints kept.`
           : undefined
       );
+    } else {
+      const sprint = sprints.find((s) => s.id === target.id);
+      const storyCount = storyCountForSprint(map, target.id);
+      const mapSnapshot = map;
+      const sprintsSnapshot = sprints;
+      setMap(deleteSprintStories(map, target.id));
+      setSprints((prev) => deleteSprint(prev, target.id));
+      toast(`Deleted Sprint ${sprint?.sprintNumber} "${sprint?.name ?? ""}"`, {
+        description:
+          storyCount > 0
+            ? `${pluralize(storyCount, "story", "stories")} moved to Backlog.`
+            : undefined,
+        action: {
+          label: "Undo",
+          onClick: () => {
+            setMap(mapSnapshot);
+            setSprints(sprintsSnapshot);
+          },
+        },
+      });
     }
 
     closeDeleteDialog();
@@ -750,11 +948,19 @@ export default function TasksPage() {
     shownTarget?.kind === "feature"
       ? storyCountForFeature(shownSnapshot, shownTarget.id)
       : 0;
+  const deletingSprint =
+    shownTarget?.kind === "sprint"
+      ? sprints.find((s) => s.id === shownTarget.id)
+      : undefined;
+  const deletingSprintStoryCount =
+    shownTarget?.kind === "sprint"
+      ? storyCountForSprint(shownSnapshot, shownTarget.id)
+      : 0;
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <HeaderActions>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setActiveModal("sprint")}>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={openAddSprintDialog}>
           <Plus className="h-3.5 w-3.5" />
           Sprint
         </Button>
@@ -1074,11 +1280,44 @@ export default function TasksPage() {
                       className="grid border-b border-border/60 hover:bg-muted/5 transition-colors duration-150"
                       style={{ gridTemplateColumns: gridTemplateColumnsString }}
                     >
-                      <div className="sticky left-0 z-20 border-r border-border/70 bg-background/95 px-5 py-5 flex flex-col justify-center backdrop-blur shadow-xs">
+                      <div className="group/sprint sticky left-0 z-20 border-r border-border/70 bg-background/95 px-5 py-5 flex flex-col justify-center gap-0.5 backdrop-blur shadow-xs">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                            Sprint {sprint.sprintNumber}
+                          </p>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              aria-label={`Actions for Sprint ${sprint.sprintNumber}`}
+                              className="-mt-0.5 -mr-1 shrink-0 rounded p-0.5 text-muted-foreground/50 opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover/sprint:opacity-100 data-[state=open]:opacity-100"
+                            >
+                              <MoreVertical className="h-3.5 w-3.5" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44">
+                              <DropdownMenuItem onClick={() => openEditSprintDialog(sprint)}>
+                                <Pencil />
+                                Edit sprint
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => requestDelete({ kind: "sprint", id: sprint.id })}
+                              >
+                                <Trash2 />
+                                Delete sprint
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                         <p className="text-sm font-bold tracking-tight">
                           {sprint.name}
                         </p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5 font-medium">
+                        <p
+                          className="text-[11px] text-muted-foreground line-clamp-2"
+                          title={sprint.outcome}
+                        >
+                          {sprint.outcome}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground font-medium">
                           {sprint.window}
                         </p>
                       </div>
@@ -1160,39 +1399,104 @@ export default function TasksPage() {
           open={activeModal === "sprint"}
           onOpenChange={(open) => !open && setActiveModal(null)}
         >
-          <DialogContent>
+          <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Add New Sprint Row</DialogTitle>
+              <DialogTitle>
+                {editingSprintId ? `Edit Sprint ${newSprintNumber}` : "Add New Sprint Row"}
+              </DialogTitle>
               <DialogDescription>
-                Create a vertical row to organize sprint delivery targets.
+                {editingSprintId
+                  ? "Update this sprint's name, outcome, and dates."
+                  : "Create a vertical row to organize sprint delivery targets."}
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-3.5 py-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="sprint-name">Sprint Name</Label>
-                <Input
-                  id="sprint-name"
-                  placeholder="e.g. Sprint 5"
-                  value={newSprintName}
-                  onChange={(e) => setNewSprintName(e.target.value)}
-                />
+            <div className="grid gap-5 py-3 sm:grid-cols-2">
+              <div className="grid gap-3.5">
+                <div className="space-y-1.5">
+                  <Label>Sprint Number</Label>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Sprint {newSprintNumber}
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="sprint-name">Sprint Name</Label>
+                  <Input
+                    id="sprint-name"
+                    placeholder="e.g. Launch Beta"
+                    value={newSprintName}
+                    onChange={(e) => setNewSprintName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="sprint-outcome">
+                    What is the outcome for the client at the end of this sprint?
+                  </Label>
+                  <Input
+                    id="sprint-outcome"
+                    placeholder="e.g. Client can invite teammates and assign roles"
+                    value={newSprintOutcome}
+                    maxLength={SPRINT_OUTCOME_MAX_LENGTH}
+                    onChange={(e) => setNewSprintOutcome(e.target.value)}
+                  />
+                  <p className="text-right text-[11px] text-muted-foreground">
+                    {newSprintOutcome.length}/{SPRINT_OUTCOME_MAX_LENGTH}
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="sprint-start">Start Date</Label>
+                  <StartDateField
+                    id="sprint-start"
+                    value={newSprintStart}
+                    onChange={(start) => {
+                      // Keep whatever span was already selected — a clean
+                      // 2/3/4 week bucket from the toggle, or an edited
+                      // sprint's exact (possibly uneven) day count — rather
+                      // than resetting it.
+                      const span =
+                        newSprintStart && newSprintEnd
+                          ? daySpan(newSprintStart, newSprintEnd)
+                          : Number(newSprintDuration ?? "2") * 7;
+                      setNewSprintStart(start);
+                      setNewSprintEnd(addDaysISO(start, span - 1));
+                    }}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Duration</Label>
+                  <ToggleGroup
+                    variant="outline"
+                    value={newSprintDuration ? [newSprintDuration] : []}
+                    onValueChange={([weeks]) => {
+                      if (weeks) applySprintDuration(weeks);
+                    }}
+                  >
+                    {["2", "3", "4"].map((weeks) => (
+                      <ToggleGroupItem key={weeks} value={weeks} className="px-3">
+                        {weeks} weeks
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                </div>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="sprint-window">Time Window</Label>
-                <Input
-                  id="sprint-window"
-                  placeholder="e.g. Week 9-10"
-                  value={newSprintWindow}
-                  onChange={(e) => setNewSprintWindow(e.target.value)}
-                />
+                <Label>Sprint Calendar</Label>
+                <DurationPreviewCalendar start={newSprintStart} end={newSprintEnd} />
               </div>
             </div>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setActiveModal(null)}>
                 Cancel
               </Button>
-              <Button onClick={addSprint} disabled={!newSprintName.trim()}>
-                Create Sprint
+              <Button
+                onClick={saveSprint}
+                disabled={
+                  !newSprintName.trim() ||
+                  !newSprintOutcome.trim() ||
+                  !newSprintStart ||
+                  !newSprintEnd
+                }
+              >
+                {editingSprintId ? "Save Changes" : "Create Sprint"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1304,7 +1608,7 @@ export default function TasksPage() {
                 >
                   {sprints.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name} ({s.window})
+                      Sprint {s.sprintNumber}: {s.name} ({s.window})
                     </option>
                   ))}
                   <option value={BACKLOG_SPRINT_ID}>
@@ -1359,27 +1663,25 @@ export default function TasksPage() {
         >
           <DialogContent>
             {shownTarget?.kind === "goal" ? (
-              <>
-                <DialogHeader>
-                  <DialogTitle>
-                    Delete goal &ldquo;{deletingGoal?.title}&rdquo;?
-                  </DialogTitle>
-                  <DialogDescription>
-                    {deletingGoalImpact && deletingGoalImpact.featureCount > 0 ? (
-                      <>
-                        {pluralize(deletingGoalImpact.featureCount, "feature")} and{" "}
-                        {pluralize(deletingGoalImpact.storyCount, "story", "stories")} move to{" "}
-                        <span className="font-medium text-foreground">Unassigned</span>.
-                        Feature columns and sprint rows are preserved — only the goal
-                        grouping is removed.
-                      </>
-                    ) : (
-                      "This goal has no features. Nothing else will be affected."
-                    )}
-                  </DialogDescription>
-                </DialogHeader>
-              </>
-            ) : (
+              <DialogHeader>
+                <DialogTitle>
+                  Delete goal &ldquo;{deletingGoal?.title}&rdquo;?
+                </DialogTitle>
+                <DialogDescription>
+                  {deletingGoalImpact && deletingGoalImpact.featureCount > 0 ? (
+                    <>
+                      {pluralize(deletingGoalImpact.featureCount, "feature")} and{" "}
+                      {pluralize(deletingGoalImpact.storyCount, "story", "stories")} move to{" "}
+                      <span className="font-medium text-foreground">Unassigned</span>.
+                      Feature columns and sprint rows are preserved — only the goal
+                      grouping is removed.
+                    </>
+                  ) : (
+                    "This goal has no features. Nothing else will be affected."
+                  )}
+                </DialogDescription>
+              </DialogHeader>
+            ) : shownTarget?.kind === "feature" ? (
               <>
                 <DialogHeader>
                   <DialogTitle>
@@ -1427,13 +1729,32 @@ export default function TasksPage() {
                   </div>
                 )}
               </>
+            ) : (
+              <DialogHeader>
+                <DialogTitle>
+                  Delete Sprint {deletingSprint?.sprintNumber} &ldquo;{deletingSprint?.name}&rdquo;?
+                </DialogTitle>
+                <DialogDescription>
+                  {deletingSprintStoryCount > 0
+                    ? `${pluralize(
+                        deletingSprintStoryCount,
+                        "story",
+                        "stories"
+                      )} will move to the Backlog. Each story keeps its feature column.`
+                    : "This sprint has no stories. Nothing else will be affected."}
+                </DialogDescription>
+              </DialogHeader>
             )}
             <DialogFooter>
               <Button variant="ghost" onClick={closeDeleteDialog}>
                 Cancel
               </Button>
               <Button variant="destructive" onClick={confirmDelete}>
-                {shownTarget?.kind === "goal" ? "Delete Goal" : "Delete Feature"}
+                {shownTarget?.kind === "goal"
+                  ? "Delete Goal"
+                  : shownTarget?.kind === "feature"
+                    ? "Delete Feature"
+                    : "Delete Sprint"}
               </Button>
             </DialogFooter>
           </DialogContent>
