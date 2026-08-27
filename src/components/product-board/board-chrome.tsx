@@ -63,9 +63,10 @@ export function useActiveSection(ids: string[], root: HTMLElement | null) {
 /**
  * In-tab table of contents, listing the groups of the active section.
  *
+ * Sits in the right gutter of the board column.
+ *
  * `self-start` is load-bearing: as a flex child the nav would otherwise stretch
  * to the container's full height, leaving `position: sticky` no room to travel.
- * `top-16` clears the sticky tab bar above it.
  */
 export function GroupRail({
   groups,
@@ -80,11 +81,11 @@ export function GroupRail({
 
   return (
     <nav
-      aria-label="Sections in this tab"
-      className="sticky top-16 hidden w-48 shrink-0 self-start lg:block"
+      aria-label="On this section"
+      className="sticky top-6 hidden w-48 shrink-0 self-start lg:block"
     >
       <p className="mb-2 pl-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-foreground/55">
-        On this tab
+        On this section
       </p>
       <ul className="space-y-0.5 border-l">
         {groups.map((group) => {

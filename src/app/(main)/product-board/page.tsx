@@ -230,7 +230,7 @@ export default function ProductBoardPage() {
       nowhere to travel. The shell gives us --header-height; `variant="inset"`
       adds m-2 (1rem vertical) at md and up.
     */
-    <div className="flex h-[calc(100svh-var(--header-height))] flex-col overflow-hidden md:h-[calc(100svh-var(--header-height)-1rem)]">
+    <div className="flex h-[calc(100svh-var(--header-height))] overflow-hidden md:h-[calc(100svh-var(--header-height)-1rem)]">
       <HeaderActions>
         <Button variant="outline" size="sm" className="gap-2">
           <Download className="h-4 w-4" />
@@ -243,37 +243,46 @@ export default function ProductBoardPage() {
       </HeaderActions>
 
       {/*
-        Two levels of navigation: tabs jump between the four sections, and a
-        sticky in-tab rail jumps between the groups inside the active one. Both
-        stay reachable from any scroll position, so you never scroll up to move.
+        Two levels of navigation, one on each flank: the left rail switches
+        sections, the right rail jumps between the groups inside the active one.
+        Both sit outside — or sticky within — the scrolling column, so they stay
+        reachable from any scroll position.
       */}
-      <div ref={setScrollEl} className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-5xl px-4 pb-6 lg:px-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            {/* Sticky so switching sections never requires scrolling back up. */}
-            <div className="sticky top-0 z-20 -mx-1 mt-6 mb-6 bg-background/95 px-6 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-              {/*
-                Columns come from the data, not a hardcoded grid-cols-N, so
-                adding or removing a section needs no change here.
-              */}
-              <TabsList
-                className="grid w-full"
-                style={{
-                  gridTemplateColumns: `repeat(${board.sections.length}, minmax(0, 1fr))`,
-                }}
-              >
-                {board.sections.map((section) => {
-                  const Icon = SECTION_ICONS[section.id] ?? Sparkles;
-                  return (
-                    <TabsTrigger key={section.id} value={section.id} className="gap-2">
-                      <Icon className="h-4 w-4" />
-                      <span className="hidden sm:inline">{section.title}</span>
-                    </TabsTrigger>
-                  );
-                })}
-              </TabsList>
-            </div>
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        orientation="vertical"
+        className="flex min-h-0 w-full gap-0"
+      >
+        {/*
+          Its own scroll context: a long section list must never push the board
+          column's height around. Icon-only until md, so the tabs stay reachable
+          on narrow screens instead of disappearing with the labels.
+        */}
+        <div className="w-14 shrink-0 overflow-y-auto border-r px-2 py-6 md:w-56 md:px-3">
+          <p className="mb-2 hidden pl-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-foreground/55 md:block">
+            Sections
+          </p>
+          <TabsList className="w-full gap-1">
+            {board.sections.map((section) => {
+              const Icon = SECTION_ICONS[section.id] ?? Sparkles;
+              return (
+                <TabsTrigger
+                  key={section.id}
+                  value={section.id}
+                  title={section.title}
+                  className="h-auto justify-center gap-2 px-2 py-2 md:justify-start md:px-3"
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="hidden truncate md:inline">{section.title}</span>
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        </div>
 
+        <div ref={setScrollEl} className="min-w-0 flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-6xl px-4 py-6 lg:px-6">
             {board.sections.map((section) => {
               const groups = section.groups
                 .map((g) => ({ group: g, blocks: g.blocks.filter(isVisible) }))
@@ -282,25 +291,14 @@ export default function ProductBoardPage() {
               return (
                 <TabsContent key={section.id} value={section.id}>
                   <div className="flex gap-8">
-                    <GroupRail
-                      groups={groups.map(({ group, blocks }) => ({
-                        id: group.id,
-                        title: group.title,
-                        count: blocks.length,
-                      }))}
-                      activeId={activeGroup}
-                      density={density}
-                    />
-
                     <div className="min-w-0 flex-1">
-
                       {groups.length ? (
                         <div className="space-y-10">
                           {groups.map(({ group, blocks }) => (
                             <section
                               key={group.id}
                               id={anchorId(group.id)}
-                              className="scroll-mt-20"
+                              className="scroll-mt-6"
                             >
                               <div className="mb-5 border-b pb-3">
                                 <h3 className="text-xl font-semibold tracking-tight text-foreground">
@@ -346,13 +344,23 @@ export default function ProductBoardPage() {
                         </p>
                       )}
                     </div>
+
+                    <GroupRail
+                      groups={groups.map(({ group, blocks }) => ({
+                        id: group.id,
+                        title: group.title,
+                        count: blocks.length,
+                      }))}
+                      activeId={activeGroup}
+                      density={density}
+                    />
                   </div>
                 </TabsContent>
               );
             })}
-          </Tabs>
+          </div>
         </div>
-      </div>
+      </Tabs>
     </div>
   );
 }

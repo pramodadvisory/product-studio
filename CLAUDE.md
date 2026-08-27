@@ -7,5 +7,3 @@ This product is called "Product Studio" a web-app to help product managers manag
 Backend - Supabase
 Frontend - NextJS
 Deployed on - Vercel
-
-Strike strike, praise God

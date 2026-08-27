@@ -201,7 +201,7 @@ export function HypothesisCard({
               {impact.experimentCount}{" "}
               {impact.experimentCount === 1 ? "experiment" : "experiments"} and{" "}
               {impact.storyCount}{" "}
-              {impact.storyCount === 1 ? "story" : "stories"}. This can't be
+              {impact.storyCount === 1 ? "story" : "stories"}. This cannot be
               undone.
             </DialogDescription>
           </DialogHeader>

@@ -14,7 +14,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, CameraIcon, FileTextIcon, Settings2Icon, CircleHelpIcon, SearchIcon, DatabaseIcon, FileChartColumnIcon, FileIcon, Building2, BotIcon } from "lucide-react"
+import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, CameraIcon, FileTextIcon, Settings2Icon, CircleHelpIcon, SearchIcon, DatabaseIcon, FileChartColumnIcon, FileIcon, Building2, BotIcon, FlaskConicalIcon, GavelIcon } from "lucide-react"
 
 const data = {
   user: {
@@ -36,6 +36,22 @@ const data = {
       url: "/docs",
       icon: (
         <FileTextIcon
+        />
+      ),
+    },
+    {
+      title: "Decisions",
+      url: "/decisions",
+      icon: (
+        <GavelIcon
+        />
+      ),
+    },
+    {
+      title: "Experiments",
+      url: "/tasks",
+      icon: (
+        <FlaskConicalIcon
         />
       ),
     },
