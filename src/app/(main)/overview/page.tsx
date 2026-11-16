@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { CheckIcon } from "lucide-react";
+import { CheckIcon, PencilIcon } from "lucide-react";
 
 import { useHeaderTitle } from "@/components/header-title-context";
 import {
@@ -20,6 +20,7 @@ import {
   useProjectProgress,
 } from "@/components/project-data";
 import { CompletionMark } from "@/components/completion-mark";
+import { ProjectDetailsDialog } from "@/components/project-details-dialog";
 import { StatusPill } from "@/components/status-pill";
 import { Skeleton } from "@/components/ui/skeleton";
 import { STAGES } from "@/lib/navigation";
@@ -40,6 +41,7 @@ export default function OverviewPage() {
   const project = useProjectProgress();
   // Fixed for the life of the page so server and client agree on "N days ago".
   const [now] = React.useState(() => Date.now());
+  const [editingDetails, setEditingDetails] = React.useState(false);
 
   useHeaderTitle("Overview");
 
@@ -95,8 +97,26 @@ export default function OverviewPage() {
               },
             ],
           },
-          { items: [{ label: "All projects", href: "/projects" }] },
+          {
+            items: [
+              { label: "Edit name and description", icon: PencilIcon, onSelect: () => setEditingDetails(true) },
+              { label: "All projects", href: "/projects" },
+            ],
+          },
         ]}
+      />
+
+      <ProjectDetailsDialog
+        open={editingDetails}
+        onOpenChange={setEditingDetails}
+        name={board.productName}
+        description={board.description}
+        onSave={({ name, description }) =>
+          mutate((draft) => {
+            draft.productName = name;
+            draft.description = description;
+          })
+        }
       />
 
       {top ? <UpNext item={top} /> : <AllClear />}
