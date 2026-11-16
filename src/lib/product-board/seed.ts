@@ -1,4 +1,70 @@
-import { BOARD_SCHEMA_VERSION, type Board } from "./schema";
+import { BOARD_SCHEMA_VERSION, type Board, type Group } from "./schema";
+
+/**
+ * Define › Experience & design. Design expectations live in Define, so the
+ * people who build know what the experience must get right before they start.
+ * Added in schema v8; `migrateBoard` adds it to boards saved before then.
+ */
+export const EXPERIENCE_GROUP: Group = {
+  id: "g-experience",
+  title: "Experience & design",
+  description: "Who uses the product, where, and what the experience must get right. These are the design expectations the build is held to.",
+  blocks: [
+    {
+      id: "b-ux-context",
+      type: "statement",
+      title: "Users & Context",
+      description: "Who uses it, on which devices, and in what situations.",
+      size: "full",
+      emphasis: "card",
+      confidence: "validated",
+      inSummary: true,
+      body: "Product managers and analysts at their desks, in a browser, during weekly planning and right after a release. Executives glance at shared dashboards on their phones before meetings.",
+    },
+    {
+      id: "b-ux-journeys",
+      type: "list",
+      title: "Key Journeys",
+      description: "The moments that decide whether people keep using it, each with a target.",
+      size: "half",
+      emphasis: "plain",
+      confidence: "assumption",
+      items: [
+        { id: "uj1", text: "Connect a data source and see the first event within 10 minutes" },
+        { id: "uj2", text: "Build a first dashboard without help in under 15 minutes" },
+        { id: "uj3", text: "Share a dashboard with a stakeholder in two clicks" },
+      ],
+    },
+    {
+      id: "b-ux-principles",
+      type: "list",
+      title: "Experience Principles",
+      description: "What the experience must always feel like. They settle design arguments.",
+      size: "half",
+      emphasis: "plain",
+      confidence: "decided",
+      items: [
+        { id: "up1", text: "Plain language: no SQL or analytics jargon needed" },
+        { id: "up2", text: "Every chart says what it shows and why it matters" },
+        { id: "up3", text: "Fast: any dashboard loads in under 2 seconds" },
+      ],
+    },
+    {
+      id: "b-ux-constraints",
+      type: "list",
+      title: "Design Constraints",
+      description: "Accessibility, brand, platform and legal rules the design must follow.",
+      size: "full",
+      emphasis: "plain",
+      confidence: "decided",
+      items: [
+        { id: "uc1", text: "WCAG 2.2 AA" },
+        { id: "uc2", text: "Web first (Chrome, Edge, Safari); mobile is view-only" },
+        { id: "uc3", text: "GDPR: no personal data shown without consent" },
+      ],
+    },
+  ],
+};
 
 /**
  * Seed board.
@@ -377,6 +443,7 @@ export const SEED_BOARD: Board = {
             },
           ],
         },
+        EXPERIENCE_GROUP,
       ],
     },
 

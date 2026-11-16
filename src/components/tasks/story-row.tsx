@@ -24,7 +24,7 @@ import {
   STORY_STATUSES,
   type StoryItem,
   type StoryStatus,
-} from "@/app/(main)/tasks/tasks";
+} from "@/app/(main)/design/experiments/tasks";
 
 /**
  * One delivery story under an experiment.

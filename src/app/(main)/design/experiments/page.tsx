@@ -12,10 +12,11 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { HeaderActions, useHeaderTitle } from "@/components/header-title-context";
+import { useHeaderTitle } from "@/components/header-title-context";
+import { PageColumn, PageHeader, SectionLabel } from "@/components/page-header";
+import { useProjectExperiments } from "@/components/project-data";
 import { HypothesisCard } from "@/components/tasks/hypothesis-card";
-import { SEED_BOARD } from "./seed-data";
+import { getStage, stageEyebrow } from "@/lib/navigation";
 import {
   HYPOTHESIS_STATUS_LABEL,
   HYPOTHESIS_STATUSES,
@@ -34,30 +35,39 @@ import {
   updateHypothesis,
   updateStory,
   type HypothesisStatus,
-  type TaskBoard,
 } from "./tasks";
 
 /**
- * Tasks — hypothesis-driven delivery.
+ * Experiments — hypothesis-driven delivery.
  *
  * Hypothesis → Experiment → Story, as one nested accordion. Every mutation goes
  * through a pure transition in `tasks.ts`, so this component only holds the
  * board and the view state (which filter is active, which brand-new card should
  * open itself).
  *
- * State is in memory only: a refresh reseeds. Wiring persistence means saving
- * the value each `setBoard` produces — no changes to the handlers below.
+ * State is held in ProjectDataProvider for the session (a refresh reseeds), so
+ * the Overview and the Product Board see the same hypotheses. Wiring
+ * persistence means saving the value each `setBoard` produces — no changes to
+ * the handlers below.
+ *
+ * Arriving with `?open=<hypothesisId>` (the Product Board's "Test an
+ * assumption" creates one and links here) opens that hypothesis.
  */
 type Filter = "all" | HypothesisStatus;
 
-export default function TasksPage() {
-  const [board, setBoard] = React.useState<TaskBoard>(SEED_BOARD);
+export default function TasksPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ open?: string }>;
+}) {
+  const { open: openId } = React.use(searchParams);
+  const { experiments: board, setExperiments: setBoard } = useProjectExperiments();
   const [filter, setFilter] = React.useState<Filter>("all");
   // A hypothesis created from the header button is empty, so it opens itself —
   // otherwise the user is left looking at a blank row with nowhere obvious to type.
   const [autoOpenId, setAutoOpenId] = React.useState<string | null>(null);
 
-  useHeaderTitle("Tasks");
+  useHeaderTitle("Design › Experiments");
 
   const counts = boardCounts(board);
   const byStatus = countByStatus(board);
@@ -76,16 +86,50 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 pt-4 lg:px-6">
-      <HeaderActions>
-        <Button onClick={handleAddHypothesis}>
-          <PlusIcon />
-          New hypothesis
-        </Button>
-      </HeaderActions>
+    <PageColumn>
+      <PageHeader
+        back={{ label: "Design", href: "/design" }}
+        eyebrow={stageEyebrow(getStage("design"))}
+        title="Experiments"
+        description="What we're testing, and what we've learned."
+        action={
+          <Button onClick={handleAddHypothesis}>
+            <PlusIcon />
+            New hypothesis
+          </Button>
+        }
+        overflow={[
+          {
+            label: "Show",
+            items: [
+              { label: `All (${board.length})`, checked: filter === "all", onSelect: () => setFilter("all") },
+              ...HYPOTHESIS_STATUSES.map((status) => ({
+                label: `${HYPOTHESIS_STATUS_LABEL[status]} (${byStatus[status]})`,
+                checked: filter === status,
+                onSelect: () => setFilter(status),
+              })),
+            ],
+          },
+        ]}
+      />
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
+      <section className="flex flex-col">
+        <SectionLabel
+          aside={
+            filter !== "all" && (
+              <button
+                type="button"
+                onClick={() => setFilter("all")}
+                className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+              >
+                Showing {HYPOTHESIS_STATUS_LABEL[filter].toLowerCase()} · show all
+              </button>
+            )
+          }
+        >
+          Hypotheses
+        </SectionLabel>
+        <p className="mb-3 text-[13px] text-muted-foreground">
           <span className="tabular-nums">{counts.hypotheses}</span>{" "}
           {counts.hypotheses === 1 ? "hypothesis" : "hypotheses"} ·{" "}
           <span className="tabular-nums">{counts.experiments}</span>{" "}
@@ -95,27 +139,8 @@ export default function TasksPage() {
           {counts.stories === 1 ? "story" : "stories"}
         </p>
 
-        <Tabs
-          value={filter}
-          onValueChange={(value) => setFilter(value as Filter)}
-        >
-          <TabsList>
-            <TabsTrigger value="all">
-              All
-              <Count>{board.length}</Count>
-            </TabsTrigger>
-            {HYPOTHESIS_STATUSES.map((status) => (
-              <TabsTrigger key={status} value={status}>
-                {HYPOTHESIS_STATUS_LABEL[status]}
-                <Count>{byStatus[status]}</Count>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-      </div>
-
       {visible.length === 0 ? (
-        <Empty className="flex-1 border">
+        <Empty className="border">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <LightbulbIcon />
@@ -148,7 +173,7 @@ export default function TasksPage() {
             <HypothesisCard
               key={hypothesis.id}
               hypothesis={hypothesis}
-              defaultOpen={hypothesis.id === autoOpenId}
+              defaultOpen={hypothesis.id === autoOpenId || hypothesis.id === openId}
               onChange={(patch) =>
                 setBoard((prev) => updateHypothesis(prev, hypothesis.id, patch))
               }
@@ -189,14 +214,7 @@ export default function TasksPage() {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function Count({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="ml-1 text-xs text-muted-foreground tabular-nums">
-      {children}
-    </span>
+      </section>
+    </PageColumn>
   );
 }

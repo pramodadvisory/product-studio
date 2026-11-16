@@ -1,10 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { GavelIcon, SearchIcon } from "lucide-react";
+import { GavelIcon, PlusIcon, SearchIcon } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Empty,
   EmptyDescription,
@@ -12,10 +12,11 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { HeaderActions, useHeaderTitle } from "@/components/header-title-context";
-import { DecisionChat } from "@/components/decisions/decision-chat";
+import { useHeaderTitle } from "@/components/header-title-context";
+import { PageColumn, PageHeader, SectionLabel } from "@/components/page-header";
+import { useProjectDecisions } from "@/components/project-data";
+import { useAssistant } from "@/components/assistant/assistant-provider";
 import { DecisionTimeline } from "@/components/decisions/decision-timeline";
-import { useDecisions } from "@/hooks/use-decisions";
 import {
   DECISION_STATUSES,
   DECISION_STATUS_LABEL,
@@ -26,20 +27,22 @@ import {
 /**
  * Decisions — the decision log.
  *
- * Two halves that feed each other: capture on the right, where a transcript or
- * a conversation becomes a record, and the timeline on the left, which is what
- * the log is actually for — being able to answer "why did we do this" months
- * after everyone who was in the room has forgotten.
+ * Answers "what did we decide, and why?" months after everyone who was in the
+ * room has forgotten. Decisions still waiting on a call sit at the top; the
+ * log follows. Capture goes through the Studio assistant, which drafts the
+ * record from a transcript or a description for you to review and apply.
  *
- * Records are held in localStorage (see `useDecisions`), so the log survives a
- * refresh on the machine that captured it.
+ * Records are held in localStorage (see `useDecisions`) and shared through
+ * ProjectDataProvider, so the sidebar badge updates the moment you save.
  */
 type Filter = "all" | DecisionStatus;
 
 export default function DecisionsPage() {
-  const { decisions, hydrated, saveDecision, deleteDecision } = useDecisions();
+  const { decisions, hydrated, deleteDecision } = useProjectDecisions();
   const [filter, setFilter] = React.useState<Filter>("all");
   const [query, setQuery] = React.useState("");
+  const [searching, setSearching] = React.useState(false);
+  const assistant = useAssistant();
 
   useHeaderTitle("Decisions");
 
@@ -53,96 +56,119 @@ export default function DecisionsPage() {
     () =>
       decisions.filter(
         (decision) =>
-          (filter === "all" || decision.status === filter) &&
-          matchesQuery(decision, query)
+          (filter === "all" || decision.status === filter) && matchesQuery(decision, query)
       ),
     [decisions, filter, query]
   );
 
+  const waiting = visible.filter((d) => d.status === "proposed");
+  const log = visible.filter((d) => d.status !== "proposed");
   const filtering = filter !== "all" || query.trim().length > 0;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-      <HeaderActions>
-        <p className="hidden text-sm text-muted-foreground sm:block">
-          <span className="tabular-nums">{decisions.length}</span>{" "}
-          {decisions.length === 1 ? "decision" : "decisions"} recorded
-        </p>
-      </HeaderActions>
-
-      {/* Left — the log */}
-      <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 lg:px-6">
-          <Tabs
-            value={filter}
-            onValueChange={(value) => setFilter(value as Filter)}
+    <PageColumn>
+      <PageHeader
+        eyebrow="Library"
+        title="Decisions"
+        description="What we decided, and why."
+        action={
+          <Button
+            onClick={() =>
+              assistant.open({
+                scope: "Library › Decisions",
+                draft: "Record a decision. Here's what was decided and why: ",
+              })
+            }
           >
-            <TabsList>
-              <TabsTrigger value="all">
-                All
-                <Count>{decisions.length}</Count>
-              </TabsTrigger>
-              {DECISION_STATUSES.map((status) => (
-                <TabsTrigger key={status} value={status}>
-                  {DECISION_STATUS_LABEL[status]}
-                  <Count>{byStatus[status]}</Count>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+            <PlusIcon />
+            Record a decision
+          </Button>
+        }
+        overflow={[
+          {
+            items: [
+              { label: "Search decisions", icon: SearchIcon, onSelect: () => setSearching(true) },
+            ],
+          },
+          {
+            label: "Show",
+            items: [
+              { label: `All (${decisions.length})`, checked: filter === "all", onSelect: () => setFilter("all") },
+              ...DECISION_STATUSES.map((status) => ({
+                label: `${DECISION_STATUS_LABEL[status]} (${byStatus[status]})`,
+                checked: filter === status,
+                onSelect: () => setFilter(status),
+              })),
+            ],
+          },
+        ]}
+      />
 
-          <div className="relative w-full sm:w-56">
-            <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search decisions"
-              aria-label="Search decisions"
-              className="pl-8"
-            />
-          </div>
+      {(searching || query) && (
+        <div className="relative -mt-2">
+          <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            autoFocus
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onBlur={() => !query && setSearching(false)}
+            placeholder="Search decisions"
+            aria-label="Search decisions"
+            className="pl-8"
+          />
         </div>
+      )}
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8 lg:px-6">
-          {visible.length === 0 ? (
-            <Empty className="border">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <GavelIcon />
-                </EmptyMedia>
-                <EmptyTitle>
-                  {!hydrated
-                    ? "Loading decisions"
-                    : filtering
-                      ? "Nothing matches"
-                      : "No decisions recorded yet"}
-                </EmptyTitle>
-                <EmptyDescription>
-                  {filtering
-                    ? "Clear the filter or search to see the whole log."
-                    : "Paste a call transcript into the assistant and it will draft the first record for you."}
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : (
-            <DecisionTimeline decisions={visible} onDelete={deleteDecision} />
+      {filtering && (
+        <p className="-mt-4 text-[13px] text-muted-foreground">
+          Showing {visible.length} of {decisions.length}.{" "}
+          <button
+            type="button"
+            className="underline underline-offset-2 hover:text-foreground"
+            onClick={() => {
+              setFilter("all");
+              setQuery("");
+              setSearching(false);
+            }}
+          >
+            Show everything
+          </button>
+        </p>
+      )}
+
+      {visible.length === 0 ? (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <GavelIcon />
+            </EmptyMedia>
+            <EmptyTitle>
+              {!hydrated ? "Loading decisions" : filtering ? "Nothing matches" : "No decisions recorded yet"}
+            </EmptyTitle>
+            <EmptyDescription>
+              {filtering
+                ? "Clear the filter or search to see the whole log."
+                : "Record a decision, or paste a call transcript into the assistant. It drafts the record for you to check."}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <>
+          {waiting.length > 0 && (
+            <section>
+              <SectionLabel>Waiting on you</SectionLabel>
+              <DecisionTimeline decisions={waiting} onDelete={deleteDecision} />
+            </section>
           )}
-        </div>
-      </main>
+          {log.length > 0 && (
+            <section>
+              <SectionLabel>Decision log</SectionLabel>
+              <DecisionTimeline decisions={log} onDelete={deleteDecision} />
+            </section>
+          )}
+        </>
+      )}
 
-      {/* Right — capture. Drops below the log on narrow screens rather than
-          disappearing, since it's half the point of the page. */}
-      <aside className="h-[60vh] shrink-0 border-t lg:h-auto lg:w-96 lg:border-t-0 lg:border-l">
-        <DecisionChat onSave={saveDecision} />
-      </aside>
-    </div>
-  );
-}
-
-function Count({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="ml-1 text-xs text-muted-foreground tabular-nums">
-      {children}
-    </span>
+    </PageColumn>
   );
 }

@@ -12,8 +12,9 @@ export function SidebarController() {
   useEffect(() => {
     // Only update sidebar when pathname actually changes
     if (previousPathnameRef.current !== pathname) {
-      // Close sidebar when on storymap or metrics page
-      if (pathname === "/storymap" || pathname === "/metrics") {
+      // The story map is the one full-width canvas; everything else reads in a
+      // single column and keeps the sidebar visible.
+      if (pathname === "/develop/story-map") {
         setOpen(false);
       } else {
         // Open sidebar on other pages

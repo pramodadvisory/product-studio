@@ -1,19 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { BotIcon, MessageSquareIcon, Trash2Icon } from "lucide-react"
+import { BotIcon, Trash2Icon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
   Empty,
-  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
@@ -22,8 +14,15 @@ import {
 import { CreateAgentDialog } from "@/components/agents/create-agent-dialog"
 import { AgentChatSheet } from "@/components/agents/agent-chat-sheet"
 import { useAgents, type Agent } from "@/hooks/use-agents"
-import { useHeaderTitle, HeaderActions } from "@/components/header-title-context"
+import { useHeaderTitle } from "@/components/header-title-context"
+import { PageColumn, PageHeader, SectionLabel } from "@/components/page-header"
 
+/**
+ * Agents — assistants that take repeat work off your plate.
+ *
+ * One action (create an agent). Each row opens a chat with that agent in a
+ * side panel; delete sits at the end of the row, out of the way.
+ */
 export default function AgentsPage() {
   const { agents, createAgent, deleteAgent, hydrated } = useAgents()
   const [activeAgent, setActiveAgent] = React.useState<Agent | null>(null)
@@ -37,67 +36,63 @@ export default function AgentsPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 pt-4 lg:px-6">
-      <HeaderActions>
-        <CreateAgentDialog onCreate={createAgent} />
-      </HeaderActions>
+    <PageColumn>
+      <PageHeader
+        eyebrow="Library"
+        title="Agents"
+        description="Assistants that take repeat work off your plate."
+        action={<CreateAgentDialog onCreate={createAgent} />}
+      />
 
       {hydrated && agents.length === 0 ? (
-        <Empty className="flex-1 border">
+        <Empty className="border">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <BotIcon />
             </EmptyMedia>
             <EmptyTitle>No agents yet</EmptyTitle>
             <EmptyDescription>
-              Create your first agent to start automating your work.
+              Create one to summarise meetings, draft emails or chase updates.
             </EmptyDescription>
           </EmptyHeader>
-          <EmptyContent>
-            <CreateAgentDialog onCreate={createAgent} />
-          </EmptyContent>
         </Empty>
       ) : (
-        <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {agents.map((agent) => (
-            <Card key={agent.id} className="flex flex-col">
-              <CardHeader>
-                <div className="mb-2 flex size-9 items-center justify-center rounded-lg bg-muted text-foreground">
-                  <BotIcon className="size-4" />
-                </div>
-                <CardTitle>{agent.name}</CardTitle>
-                <CardDescription className="line-clamp-2">
-                  {agent.description || "No description"}
-                </CardDescription>
-              </CardHeader>
-              <CardFooter className="mt-auto gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
+        <section>
+          <SectionLabel>Your agents</SectionLabel>
+          <ul className="flex flex-col divide-y border-y">
+            {agents.map((agent) => (
+              <li key={agent.id} className="group flex items-center gap-1">
+                <button
+                  type="button"
                   onClick={() => openChat(agent)}
+                  className="flex min-h-12 min-w-0 flex-1 items-center gap-3 px-1.5 py-2.5 text-left transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none"
                 >
-                  <MessageSquareIcon />
-                  Chat
-                </Button>
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+                    <BotIcon className="size-4" />
+                  </span>
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="text-sm font-medium">{agent.name}</span>
+                    <span className="line-clamp-1 text-[13px] text-muted-foreground">
+                      {agent.description || "No description"}
+                    </span>
+                  </span>
+                </button>
                 <Button
                   variant="ghost"
-                  size="icon"
+                  size="icon-sm"
                   aria-label={`Delete ${agent.name}`}
                   onClick={() => deleteAgent(agent.id)}
+                  className="text-muted-foreground opacity-60 group-hover:opacity-100 focus-visible:opacity-100"
                 >
                   <Trash2Icon />
                 </Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
-      <AgentChatSheet
-        agent={activeAgent}
-        open={chatOpen}
-        onOpenChange={setChatOpen}
-      />
-    </div>
+      <AgentChatSheet agent={activeAgent} open={chatOpen} onOpenChange={setChatOpen} />
+    </PageColumn>
   )
 }

@@ -169,21 +169,43 @@ export function isBoardCompatible(value: unknown): value is Board {
  *   v6 → v7  "Firmographics" and "Target Personas" in Customer Information
  *            changed from `third`/`two-thirds` (same row) to `full` each
  *            (separate rows)
- *
- * Note this trades away saved edits on every bump. Fine while the seed is demo
- * content; once boards hold real data this needs per-version migration instead.
+ *   v7 → v8  added the "Experience & design" group (Define). From here on a
+ *            bump migrates stored boards (see `migrate.ts`) instead of
+ *            discarding them, because boards now hold people's real answers.
  */
-export const BOARD_SCHEMA_VERSION = 7;
+export const BOARD_SCHEMA_VERSION = 8;
 
 export type Board = {
   id: string;
   schemaVersion: number;
   productName: string;
+  /** One line on what the project is making, shown in the projects list. Optional, no schema bump. */
+  description?: string;
   status: string;
   /** The 4-6 numbers worth seeing before you scroll. */
   headline: { id: string; label: string; value: string }[];
   sections: Section[];
   updatedAt: string;
+  /**
+   * How the project is run. Optional so boards saved before it existed stay
+   * valid; missing means "product". No schema bump needed.
+   */
+  projectType?: ProjectType;
+  /** Client sign-offs by stage id, for client engagements. */
+  signoffs?: Partial<Record<string, StageSignoff>>;
+};
+
+/**
+ * A product is continuous: stages show health and never close. A client
+ * engagement is phased: a stage is finished when the client signs it off.
+ */
+export type ProjectType = "product" | "engagement";
+
+export type StageSignoff = {
+  /** Who signed off on the client side. */
+  by: string;
+  /** YYYY-MM-DD. */
+  on: string;
 };
 
 export const CONFIDENCE_LABEL: Record<Confidence, string> = {

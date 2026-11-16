@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Backend } from "./storage";
 import { isSupabaseConfigured, loadBoard, saveBoard } from "./storage";
 import type { Block, Board, Section } from "./schema";
+import { SEED_BOARD } from "./seed";
 
 const SAVE_DEBOUNCE_MS = 800;
 
@@ -32,7 +33,13 @@ function findBlock(board: Board, blockId: string): Block | undefined {
   return undefined;
 }
 
-export function useBoard(seed: Board): BoardController {
+/**
+ * Loads and saves one project's board. `boardId` is null until the open
+ * project is known (it's read from this browser after mount). The sample
+ * project is seeded on first visit; any other id that can't be found falls
+ * back to the sample, via `onMissing`.
+ */
+export function useBoard(boardId: string | null, onMissing?: () => void): BoardController {
   const [board, setBoard] = useState<Board | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("loading");
   const [backend, setBackend] = useState<Backend>(
@@ -90,15 +97,28 @@ export function useBoard(seed: Board): BoardController {
     }
   }, [persist]);
 
-  // Initial load. Seeds the store on first ever visit.
+  // Load whenever the open project changes. Seeds the sample on first ever visit.
+  const onMissingRef = useRef(onMissing);
   useEffect(() => {
+    onMissingRef.current = onMissing;
+  }, [onMissing]);
+
+  useEffect(() => {
+    if (!boardId) return;
     let cancelled = false;
 
     (async () => {
-      const result = await loadBoard(seed.id);
+      const result = await loadBoard(boardId);
       if (cancelled) return;
 
-      const initial = result.board ?? seed;
+      // A project this browser can't find (cleared storage, deleted row): the
+      // caller switches to the sample, which re-runs this load.
+      if (!result.board && boardId !== SEED_BOARD.id && onMissingRef.current) {
+        onMissingRef.current();
+        return;
+      }
+
+      const initial = result.board ?? SEED_BOARD;
       latest.current = initial;
       setBoard(initial);
       setBackend(result.backend);
@@ -113,10 +133,14 @@ export function useBoard(seed: Board): BoardController {
 
     return () => {
       cancelled = true;
+      // Switching project: save the one being left before the next one loads.
+      if (timer.current) {
+        clearTimeout(timer.current);
+        timer.current = null;
+        void persist();
+      }
     };
-    // `seed` is a module constant; intentionally load once on mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [boardId, persist]);
 
   // Don't lose a pending debounce when the tab is hidden or closed.
   useEffect(() => {

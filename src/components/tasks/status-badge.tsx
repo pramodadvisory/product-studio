@@ -17,7 +17,7 @@ import {
   type ExperimentStatus,
   type HypothesisStatus,
   type StoryStatus,
-} from "@/app/(main)/tasks/tasks";
+} from "@/app/(main)/design/experiments/tasks";
 
 /**
  * Status pills for the three levels of the Tasks tree.

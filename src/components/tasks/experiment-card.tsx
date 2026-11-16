@@ -17,7 +17,7 @@ import {
   formatWindow,
   type Experiment,
   type StoryItem,
-} from "@/app/(main)/tasks/tasks";
+} from "@/app/(main)/design/experiments/tasks";
 
 /**
  * The middle level of the tree: the test that settles a hypothesis.

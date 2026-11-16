@@ -12,7 +12,7 @@
 // pure `board -> board` transition, so swapping in persistence later is a matter
 // of saving the value these return, not rewriting the callers.
 
-import type { StoryItem } from "@/app/(main)/storymap/storymap";
+import type { StoryItem } from "@/app/(main)/develop/story-map/storymap";
 
 export type { StoryItem };
 
@@ -89,6 +89,8 @@ export type Hypothesis = {
   /** 0–100. How sure the team is *before* the evidence lands. */
   confidence: number;
   experiments: Experiment[];
+  /** The Product Board block whose assumption this hypothesis tests, if any. */
+  testsBlockId?: string;
 };
 
 export type TaskBoard = Hypothesis[];

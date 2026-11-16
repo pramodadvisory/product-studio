@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { migrateBoard } from "./migrate";
 import { isBoardCompatible, type Board } from "./schema";
 
 /**
@@ -44,6 +45,8 @@ function localKey(boardId: string) {
 function accept(value: unknown, source: string): Board | null {
   if (value == null) return null;
   if (isBoardCompatible(value)) return value;
+  const migrated = migrateBoard(value);
+  if (migrated) return migrated;
   console.info(
     `[product-board] Discarding incompatible stored board from ${source}; reseeding.`
   );
@@ -67,6 +70,55 @@ function writeLocal(board: Board) {
   } catch {
     // Quota or private-mode failure — the caller reports this as an error state.
   }
+}
+
+function listLocal(): Board[] {
+  if (typeof window === "undefined") return [];
+  const boards: Board[] = [];
+  try {
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (!key?.startsWith(LOCAL_KEY_PREFIX)) continue;
+      const board = readLocal(key.slice(LOCAL_KEY_PREFIX.length));
+      if (board) boards.push(board);
+    }
+  } catch {
+    // Storage blocked: an empty list, and the caller shows the sample.
+  }
+  return boards.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+export type ListResult = {
+  boards: Board[];
+  backend: Backend;
+  warning?: string;
+};
+
+/** Every stored board, most recently updated first. Same fallback rules as `loadBoard`. */
+export async function listBoards(): Promise<ListResult> {
+  const client = getClient();
+
+  if (client) {
+    const { data, error } = await client
+      .from(BOARDS_TABLE)
+      .select("doc")
+      .order("updated_at", { ascending: false });
+
+    if (!error) {
+      const boards = (data ?? [])
+        .map((row) => accept(row.doc, "Supabase"))
+        .filter((board): board is Board => Boolean(board));
+      return { boards, backend: "supabase" };
+    }
+
+    return {
+      boards: listLocal(),
+      backend: "local",
+      warning: `Supabase unavailable (${error.message}). Showing projects saved in this browser.`,
+    };
+  }
+
+  return { boards: listLocal(), backend: "local" };
 }
 
 export type LoadResult = {

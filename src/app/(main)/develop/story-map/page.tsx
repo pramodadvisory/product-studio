@@ -1,7 +1,9 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useHeaderTitle, HeaderActions } from "@/components/header-title-context";
+import { useProjectStoryMap } from "@/components/project-data";
 import {
   closestCorners,
   pointerWithin,
@@ -68,6 +70,8 @@ import {
   GripVertical,
   Inbox,
   Layers,
+  ListChecks,
+  MoreHorizontal,
   MoreVertical,
   Pencil,
   Plus,
@@ -76,7 +80,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { initialSprints, initialStoryMap } from "./seed-data";
+import { initialStoryMap } from "./seed-data";
 import { useColumnFlip } from "./use-column-flip";
 import {
   addDaysISO,
@@ -457,10 +461,12 @@ function DurationPreviewCalendar({ start, end }: { start: string; end: string })
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function StorymapPage() {
-  useHeaderTitle("Storymap");
+  const router = useRouter();
+  useHeaderTitle("Develop › Story map");
 
-  const [map, setMap] = useState<StoryMap>(initialStoryMap);
-  const [sprints, setSprints] = useState<Sprint[]>(initialSprints);
+  // Held in ProjectDataProvider so the Overview, stage progress and the
+  // assistant see the same map this page edits.
+  const { map, setMap, sprints, setSprints } = useProjectStoryMap();
   const { goals, features, storiesByCell } = map;
 
   const [activeModal, setActiveModal] = useState<
@@ -959,19 +965,41 @@ export default function StorymapPage() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
+      {/*
+        The story map is the one full-width canvas, so its single primary
+        action sits in the top bar rather than in a page header. Structure
+        changes (sprints, goals, features) are secondary and live in ⋯.
+      */}
       <HeaderActions>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={openAddSprintDialog}>
-          <Plus className="h-3.5 w-3.5" />
-          Sprint
-        </Button>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setActiveModal("goal")}>
-          <Target className="h-3.5 w-3.5 text-sky-600" />
-          Goal
-        </Button>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setActiveModal("feature")}>
-          <Layers className="h-3.5 w-3.5 text-indigo-600" />
-          Feature
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={<Button variant="outline" size="icon-sm" aria-label="More actions" />}
+          >
+            <MoreHorizontal />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-auto min-w-52">
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Add to the map</DropdownMenuLabel>
+              <DropdownMenuItem onClick={openAddSprintDialog}>
+                <Plus />
+                New sprint
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setActiveModal("goal")}>
+                <Target className="text-sky-600" />
+                New goal
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setActiveModal("feature")}>
+                <Layers className="text-indigo-600" />
+                New feature
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => router.push("/develop/delivery-plan")}>
+              <ListChecks />
+              Delivery plan
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button
           size="sm"
           className="gap-1.5 shadow-sm"
@@ -990,6 +1018,9 @@ export default function StorymapPage() {
       <div className="flex flex-1 min-h-0 flex-col overflow-hidden p-4 lg:p-6">
         {/* Story Mapping Board */}
         <DndContext
+          // A fixed id keeps dnd-kit's accessibility ids identical on the
+          // server and the client; without it they drift and hydration fails.
+          id="storymap-board"
           sensors={sensors}
           collisionDetection={boardCollisionDetection}
           onDragStart={handleDragStart}

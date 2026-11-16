@@ -23,7 +23,7 @@ import {
   type Experiment,
   type Hypothesis,
   type StoryItem,
-} from "@/app/(main)/tasks/tasks";
+} from "@/app/(main)/design/experiments/tasks";
 
 /**
  * Top level of the tree. Collapsed it reads as a claim plus how much evidence
