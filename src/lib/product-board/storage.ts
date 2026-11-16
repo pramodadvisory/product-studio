@@ -33,6 +33,11 @@ export function isSupabaseConfigured(): boolean {
   return getClient() !== null;
 }
 
+/** The shared client, or null when Supabase isn't configured. Used by publishing. */
+export function getSupabaseClient(): SupabaseClient | null {
+  return getClient();
+}
+
 function localKey(boardId: string) {
   return `${LOCAL_KEY_PREFIX}${boardId}`;
 }

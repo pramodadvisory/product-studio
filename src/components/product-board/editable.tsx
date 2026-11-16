@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,20 @@ import { Badge } from "@/components/ui/badge";
  * text rather than looking like an input.
  */
 const COMMIT_DEBOUNCE_MS = 400;
+
+/**
+ * Read-only mode, for a published copy of a project. Every control below
+ * checks it: fields render as plain text (and empty ones not at all), and the
+ * add and remove buttons disappear. The block renderers turn it on when they
+ * are given nothing to save edits to.
+ */
+export const ReadOnlyContext = createContext(false);
+
+export function useReadOnly(): boolean {
+  return useContext(ReadOnlyContext);
+}
+
+const hasText = (value: string) => value.trim().length > 0;
 
 const FIELD_BASE =
   "w-full bg-transparent border-0 p-0 m-0 outline-none [font-family:inherit] " +
@@ -71,7 +85,16 @@ function useDraft(value: string, onCommit: (next: string) => void) {
 }
 
 /** Multi-line text that grows with its content. Use for prose. */
-export function EditableText({
+export function EditableText(props: CommitProps) {
+  const readOnly = useReadOnly();
+  if (!readOnly) return <EditableTextField {...props} />;
+  if (!hasText(props.value)) return null;
+  return (
+    <p className={cn("whitespace-pre-wrap break-words", props.className ?? "text-sm")}>{props.value}</p>
+  );
+}
+
+function EditableTextField({
   value,
   onCommit,
   label,
@@ -104,7 +127,15 @@ export function EditableText({
 }
 
 /** Single-line text. Enter commits and blurs rather than inserting a newline. */
-export function EditableLine({
+export function EditableLine(props: CommitProps) {
+  const readOnly = useReadOnly();
+  if (!readOnly) return <EditableLineField {...props} />;
+  if (!hasText(props.value)) return null;
+  // An input stays on one line; read-only text wraps rather than cutting off.
+  return <span className={cn("block break-words", props.className ?? "text-sm")}>{props.value}</span>;
+}
+
+function EditableLineField({
   value,
   onCommit,
   label,
@@ -168,12 +199,22 @@ export function EditableChip({
   label,
   tone = "neutral",
 }: CommitProps & { tone?: "high" | "medium" | "low" | "neutral" }) {
+  const readOnly = useReadOnly();
   const TONE: Record<string, string> = {
     high: "border-destructive/30 bg-destructive/10 text-destructive",
     medium: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
     low: "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-400",
     neutral: "border-border bg-muted text-muted-foreground",
   };
+
+  if (readOnly) {
+    if (!hasText(value)) return null;
+    return (
+      <Badge variant="outline" className={cn("h-auto py-0.5 text-xs font-medium", TONE[tone])}>
+        {value}
+      </Badge>
+    );
+  }
 
   return (
     <Badge
@@ -201,6 +242,8 @@ export function RemoveButton({
   label: string;
   className?: string;
 }) {
+  const readOnly = useReadOnly();
+  if (readOnly) return null;
   return (
     <button
       type="button"
@@ -230,6 +273,8 @@ export function AddButton({
   children: React.ReactNode;
   className?: string;
 }) {
+  const readOnly = useReadOnly();
+  if (readOnly) return null;
   return (
     <button
       type="button"

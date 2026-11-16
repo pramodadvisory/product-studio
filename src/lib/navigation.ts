@@ -31,6 +31,11 @@ export type StagePage = {
   title: string;
   /** The one question this page answers, shown under its title. */
   question: string;
+  /**
+   * The same page as a stakeholder would ask about it, for people reading a
+   * published project who don't know the stages: "What could go wrong?"
+   */
+  readerQuestion: string;
   /** Product Board groups shown on this page, when it is built from the board. */
   groupIds?: string[];
 };
@@ -63,12 +68,14 @@ export const STAGES: Stage[] = [
         slug: "customers",
         title: "Customers & pain points",
         question: "Who they are, and what hurts most.",
+        readerQuestion: "Who has the problem?",
         groupIds: ["g-who", "g-hurts"],
       },
       {
         slug: "market",
         title: "Market & competitors",
         question: "How big the opportunity is, and who else is solving it.",
+        readerQuestion: "How big is the opportunity?",
         groupIds: ["g-size", "g-win", "g-reach"],
       },
     ],
@@ -86,30 +93,35 @@ export const STAGES: Stage[] = [
         slug: "solution",
         title: "Value proposition & solution",
         question: "What we promise, and the core features that deliver it.",
+        readerQuestion: "What are we building?",
         groupIds: ["g-promise", "g-build"],
       },
       {
         slug: "experience",
         title: "Experience & design",
         question: "Who uses it, where, and what the experience must get right.",
+        readerQuestion: "What must the experience get right?",
         groupIds: ["g-experience"],
       },
       {
         slug: "business-model",
         title: "Business model",
         question: "How the numbers work.",
+        readerQuestion: "How will it make money?",
         groupIds: ["g-economics", "g-projections"],
       },
       {
         slug: "targets",
         title: "Success targets",
         question: "The numbers that tell us it worked.",
+        readerQuestion: "How will we know it worked?",
         groupIds: ["g-success"],
       },
       {
         slug: "risks",
         title: "Risks",
         question: "What could stop us, and what we'll do about it.",
+        readerQuestion: "What could go wrong?",
         groupIds: ["g-risk"],
       },
     ],
@@ -127,6 +139,7 @@ export const STAGES: Stage[] = [
         slug: "experiments",
         title: "Experiments",
         question: "What we're testing, and what we've learned.",
+        readerQuestion: "What have we tested?",
       },
     ],
     plays: ["Ideation", "Journey mapping", "Wireframes", "Design brief"],
@@ -142,11 +155,13 @@ export const STAGES: Stage[] = [
         slug: "story-map",
         title: "Story map",
         question: "Every story, across every goal and sprint.",
+        readerQuestion: "What is being built, sprint by sprint?",
       },
       {
         slug: "delivery-plan",
         title: "Delivery plan",
         question: "The phases that get us to launch, and what they depend on.",
+        readerQuestion: "When will it ship?",
         groupIds: ["g-plan"],
       },
     ],
@@ -163,12 +178,14 @@ export const STAGES: Stage[] = [
         slug: "launch",
         title: "Launch checklist",
         question: "What must be true before launch.",
+        readerQuestion: "Is it ready to launch?",
         groupIds: ["g-readiness"],
       },
       {
         slug: "metrics",
         title: "Metrics",
         question: "Are we hitting the targets we set?",
+        readerQuestion: "Is it hitting its targets?",
       },
     ],
     plays: ["Stakeholder update", "Metrics review", "Benefits realisation"],

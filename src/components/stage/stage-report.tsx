@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { STAGES, answerUrl, getStage, stageEyebrow, type Stage, type StageId, type StagePage } from "@/lib/navigation";
 import type { Block, Board } from "@/lib/product-board/schema";
-import { blocksFor, pluralise } from "@/lib/product-board/view";
+import { asDocument, blocksFor, pluralise } from "@/lib/product-board/view";
 import { answerProgress, nextOpenQuestion, questionStatuses, type Question } from "@/lib/questions";
 
 /**
@@ -193,13 +193,4 @@ function OpenQuestion({ stage, question, title }: { stage: Stage; question: Ques
       </Button>
     </div>
   );
-}
-
-/**
- * Reports read as a document: every block in the same quiet box, numbers
- * laid out across the width, lists in one column. Display only; edits go to
- * the real block by id.
- */
-function asDocument(block: Block): Block {
-  return { ...block, emphasis: "plain", size: block.type === "metrics" ? "full" : "half" };
 }

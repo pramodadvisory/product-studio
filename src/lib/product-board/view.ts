@@ -82,6 +82,15 @@ export function blocksFor(board: Board, groupIds: string[]): Block[] {
   return groupsFor(board, groupIds).flatMap((group) => group.blocks);
 }
 
+/**
+ * Reports read as a document: every block in the same quiet box, numbers
+ * laid out across the width, lists in one column. Display only; edits go to
+ * the real block by id. Used by stage reports and the published project.
+ */
+export function asDocument(block: Block): Block {
+  return { ...block, emphasis: "plain", size: block.type === "metrics" ? "full" : "half" };
+}
+
 /** Every board block that appears on some stage page, with where it appears. */
 export function placedBlocks(
   board: Board

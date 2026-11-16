@@ -8,7 +8,7 @@ import {
   type Block,
   type Confidence,
 } from "@/lib/product-board/schema";
-import { EditableText } from "./editable";
+import { EditableText, useReadOnly } from "./editable";
 import { Badge } from "@/components/ui/badge";
 
 /**
@@ -103,7 +103,9 @@ function BlockHeader({
   onDescriptionCommit: (next: string) => void;
   onConfidenceCommit: (next: Confidence) => void;
 }) {
-  const edited = relativeTime(block.updatedAt);
+  const readOnly = useReadOnly();
+  // "Edited 3m ago" would be wrong in a published copy, which doesn't change.
+  const edited = readOnly ? null : relativeTime(block.updatedAt);
 
   return (
     <div className="mb-3">
@@ -130,7 +132,7 @@ function BlockHeader({
           {block.confidence ? (
             <ConfidenceChip
               value={block.confidence}
-              onCycle={() => onConfidenceCommit(nextConfidence(block.confidence!))}
+              onCycle={readOnly ? undefined : () => onConfidenceCommit(nextConfidence(block.confidence!))}
             />
           ) : null}
         </div>

@@ -14,7 +14,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Table2 } from "lucide-react";
+import { Check, Table2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   ChartContainer,
@@ -42,7 +42,9 @@ import {
   EditableLine,
   EditableNumber,
   EditableText,
+  ReadOnlyContext,
   RemoveButton,
+  useReadOnly,
 } from "./editable";
 
 /**
@@ -137,6 +139,7 @@ function MetricsView({ block, update }: BlockProps<MetricsBlock>) {
 // ──────────────────────────────────────────────────────────────────── list
 
 function ListView({ block, update }: BlockProps<ListBlock>) {
+  const readOnly = useReadOnly();
   // Wide lists read better in two columns than as one long ribbon.
   const cols = block.size === "full" ? "sm:grid-cols-2" : "grid-cols-1";
 
@@ -145,7 +148,9 @@ function ListView({ block, update }: BlockProps<ListBlock>) {
       <ul className={cn("grid gap-x-6 gap-y-1.5", cols)}>
         {block.items.map((item, i) => (
           <li key={item.id} className="group/row flex items-start gap-2">
-            {block.checkable ? (
+            {block.checkable && readOnly ? (
+              <DoneMark done={Boolean(item.done)} />
+            ) : block.checkable ? (
               <Checkbox
                 className="mt-0.5"
                 checked={Boolean(item.done)}
@@ -191,9 +196,26 @@ function ListView({ block, update }: BlockProps<ListBlock>) {
   );
 }
 
+/** A checklist tick that can't be clicked, for read-only lists. */
+function DoneMark({ done }: { done: boolean }) {
+  return (
+    <span
+      role="img"
+      aria-label={done ? "Done" : "Not done"}
+      className={cn(
+        "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-[4px] border",
+        done ? "border-primary bg-primary text-primary-foreground" : "border-input"
+      )}
+    >
+      {done ? <Check className="size-3" /> : null}
+    </span>
+  );
+}
+
 // ───────────────────────────────────────────────────────────────── records
 
 function RecordsView({ block, update }: BlockProps<RecordsBlock>) {
+  const readOnly = useReadOnly();
   const titleField = block.fields.find((f) => f.kind === "title");
   const badgeFields = block.fields.filter((f) => f.kind === "badge");
   const textFields = block.fields.filter((f) => f.kind === "text");
@@ -247,7 +269,10 @@ function RecordsView({ block, update }: BlockProps<RecordsBlock>) {
             ) : null}
 
             <dl className="space-y-1.5">
-              {textFields.map((field) => (
+              {textFields
+                // Read-only: a label with nothing under it reads as missing data.
+                .filter((field) => !readOnly || (item.values[field.key] ?? "").trim())
+                .map((field) => (
                 <div key={field.key}>
                   <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70">
                     {field.label}
@@ -288,6 +313,7 @@ function RecordsView({ block, update }: BlockProps<RecordsBlock>) {
 // ──────────────────────────────────────────────────────────────── timeline
 
 function TimelineView({ block, update }: BlockProps<TimelineBlock>) {
+  const readOnly = useReadOnly();
   return (
     <div>
       <div className="space-y-5">
@@ -345,6 +371,7 @@ function TimelineView({ block, update }: BlockProps<TimelineBlock>) {
               Add milestone
             </AddButton>
 
+            {readOnly && !phase.note.trim() ? null : (
             <div className="mt-2">
               <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70">
                 Resources
@@ -356,6 +383,7 @@ function TimelineView({ block, update }: BlockProps<TimelineBlock>) {
                 className="text-sm text-foreground"
               />
             </div>
+            )}
           </div>
         ))}
       </div>
@@ -383,6 +411,7 @@ function TimelineView({ block, update }: BlockProps<TimelineBlock>) {
 // ─────────────────────────────────────────────────────────────────── chart
 
 function ChartView({ block, update }: BlockProps<ChartBlock>) {
+  const readOnly = useReadOnly();
   const [editing, setEditing] = useState(false);
 
   const config = Object.fromEntries(
@@ -473,6 +502,7 @@ function ChartView({ block, update }: BlockProps<ChartBlock>) {
           onCommit={(caption) => update((d) => void (d.caption = caption))}
           className="text-xs text-foreground"
         />
+        {readOnly ? null : (
         <button
           type="button"
           onClick={() => setEditing((v) => !v)}
@@ -487,10 +517,11 @@ function ChartView({ block, update }: BlockProps<ChartBlock>) {
           <Table2 className="h-3.5 w-3.5" />
           {editing ? "Hide data" : "Edit data"}
         </button>
+        )}
       </div>
 
       {/* Chart data is editable too — as a compact table, kept out of the way. */}
-      {editing ? (
+      {editing && !readOnly ? (
         <div className="mt-3 overflow-x-auto rounded-lg border">
           <table className="w-full text-xs">
             <thead>
@@ -561,17 +592,25 @@ function ChartView({ block, update }: BlockProps<ChartBlock>) {
 
 // ────────────────────────────────────────────────────────────────── switch
 
+const NO_EDITS = () => {};
+
+/**
+ * Renders one block. Without `mutateBlock` the block is read-only, as on a
+ * published project: there is nowhere to save an edit, so none is offered.
+ */
 export function BlockRenderer({
   block,
   mutateBlock,
 }: {
   block: Block;
-  mutateBlock: (blockId: string, recipe: (block: Block) => void) => void;
+  mutateBlock?: (blockId: string, recipe: (block: Block) => void) => void;
 }) {
+  const readOnly = !mutateBlock;
+  const save = mutateBlock ?? NO_EDITS;
   // The switch below narrows `block`, so each recipe is correctly typed at the
   // call site; the cast just bridges the generic `Block` signature of mutateBlock.
   const update = <T extends Block>(recipe: (draft: T) => void) =>
-    mutateBlock(block.id, recipe as (b: Block) => void);
+    save(block.id, recipe as (b: Block) => void);
 
   let body: React.ReactNode = null;
   switch (block.type) {
@@ -599,17 +638,19 @@ export function BlockRenderer({
   // so they can be committed generically here rather than duplicated in each
   // *View above.
   const updateDescription = (next: string) =>
-    mutateBlock(block.id, (b) => void (b.description = next));
+    save(block.id, (b) => void (b.description = next));
   const updateConfidence = (next: Confidence) =>
-    mutateBlock(block.id, (b) => void (b.confidence = next));
+    save(block.id, (b) => void (b.confidence = next));
 
   return (
-    <BlockShell
-      block={block}
-      onDescriptionCommit={updateDescription}
-      onConfidenceCommit={updateConfidence}
-    >
-      {body}
-    </BlockShell>
+    <ReadOnlyContext.Provider value={readOnly}>
+      <BlockShell
+        block={block}
+        onDescriptionCommit={updateDescription}
+        onConfidenceCommit={updateConfidence}
+      >
+        {body}
+      </BlockShell>
+    </ReadOnlyContext.Provider>
   );
 }
