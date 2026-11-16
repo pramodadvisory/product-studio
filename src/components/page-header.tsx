@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeftIcon, MoreHorizontalIcon, type LucideIcon } from "lucide-react";
 
+import { SectionLink } from "@/components/section-link";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -245,9 +247,9 @@ export function Row({ title, description, lead, trail, href, onClick }: RowProps
 
   if (href) {
     return (
-      <Link href={href} className={className}>
+      <SectionLink href={href} className={className}>
         {body}
-      </Link>
+      </SectionLink>
     );
   }
   if (onClick) {
@@ -277,7 +279,7 @@ function ChevronRightGlyph() {
   );
 }
 
-/** Folded supporting detail: shut by default, one click to open. */
+/** Folded supporting detail: shut by default, one click to open. It slides open and shut. */
 export function MoreDetail({
   label,
   count,
@@ -290,33 +292,29 @@ export function MoreDetail({
   defaultOpen?: boolean;
 }) {
   return (
-    <details className="group border-y" open={defaultOpen}>
-      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-1.5 text-sm text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+    <Collapsible defaultOpen={defaultOpen} className="border-y">
+      <CollapsibleTrigger className="group/more flex min-h-12 w-full cursor-pointer items-center justify-between px-1.5 text-left text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-none">
         <span>
           {label}
           {count !== undefined && <span className="tabular-nums"> ({count})</span>}
         </span>
-        <ChevronRightGlyphRotating />
-      </summary>
-      <div className="pb-6">{children}</div>
-    </details>
-  );
-}
-
-function ChevronRightGlyphRotating() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 16 16"
-      className="size-3.5 shrink-0 transition-transform group-open:rotate-90"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M6 3.5 10.5 8 6 12.5" />
-    </svg>
+        <svg
+          aria-hidden
+          viewBox="0 0 16 16"
+          className="size-3.5 shrink-0 transition-transform duration-200 ease-out group-data-[panel-open]/more:rotate-90 motion-reduce:transition-none"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M6 3.5 10.5 8 6 12.5" />
+        </svg>
+      </CollapsibleTrigger>
+      <CollapsiblePanel>
+        <div className="pb-6">{children}</div>
+      </CollapsiblePanel>
+    </Collapsible>
   );
 }
 
@@ -333,7 +331,7 @@ export function NextStep({
   href: string;
 }) {
   return (
-    <Link
+    <SectionLink
       href={href}
       className="flex items-center justify-between gap-3 rounded-xl bg-muted/50 px-4 py-3.5 transition-colors hover:bg-muted"
     >
@@ -345,6 +343,6 @@ export function NextStep({
         {description && <span className="text-[13px] text-muted-foreground">{description}</span>}
       </span>
       <ChevronRightGlyph />
-    </Link>
+    </SectionLink>
   );
 }

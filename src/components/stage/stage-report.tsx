@@ -7,6 +7,7 @@ import { SparklesIcon } from "lucide-react";
 import { useAssistant } from "@/components/assistant/assistant-provider";
 import { useHeaderTitle } from "@/components/header-title-context";
 import { LinkButton, MoreDetail, NextStep, PageColumn, PageHeader } from "@/components/page-header";
+import { scrollToSection } from "@/components/section-link";
 import { BlockRenderer } from "@/components/product-board/blocks";
 import { useProjectBoard } from "@/components/project-data";
 import { StatusPill } from "@/components/status-pill";
@@ -34,17 +35,21 @@ export function StageReport({ stageId }: { stageId: StageId }) {
 
   useHeaderTitle(`${stage.name} › Report`);
 
-  // A direct link to a section arrives before the board has loaded, so the
-  // browser can't scroll to it yet. Scroll once the sections exist.
+  // Links to a section don't let Next.js jump there (see SectionLink), and a
+  // direct link arrives before the board has loaded. Either way, glide to the
+  // section once the sections exist.
   React.useEffect(() => {
     if (!loaded) return;
     const scrollToHash = () => {
       const id = decodeURIComponent(window.location.hash.slice(1));
-      if (id) document.getElementById(id)?.scrollIntoView({ block: "start" });
+      if (id) scrollToSection(id);
     };
-    scrollToHash();
+    const frame = requestAnimationFrame(scrollToHash);
     window.addEventListener("hashchange", scrollToHash);
-    return () => window.removeEventListener("hashchange", scrollToHash);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("hashchange", scrollToHash);
+    };
   }, [loaded]);
 
   if (!board) {

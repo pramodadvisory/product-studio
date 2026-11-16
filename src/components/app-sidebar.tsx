@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { SectionLink } from "@/components/section-link"
 import { usePathname, useRouter } from "next/navigation"
 import { CheckIcon, ChevronsUpDownIcon, FolderOpenIcon, PlusIcon } from "lucide-react"
 
@@ -143,7 +144,7 @@ function StageNav({
                         <SidebarMenuSubItem key={page.slug}>
                           <SidebarMenuSubButton
                             isActive={active}
-                            render={<Link href={url} aria-current={active ? "page" : undefined} />}
+                            render={<SectionLink href={url} aria-current={active ? "page" : undefined} />}
                           >
                             <span>{page.title}</span>
                             {sectionDone && (

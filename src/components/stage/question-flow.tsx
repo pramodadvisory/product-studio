@@ -12,6 +12,7 @@ import { useHeaderTitle } from "@/components/header-title-context";
 import { LinkButton, NextStep } from "@/components/page-header";
 import { useProjectBoard } from "@/components/project-data";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -382,24 +383,26 @@ function Guidance({ question }: { question: Question }) {
           ))}
         </ul>
       </div>
-      <details className="group border-t pt-4">
-        <summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium [&::-webkit-details-marker]:hidden">
-          <ChevronRightIcon className="size-4 text-muted-foreground transition-transform group-open:rotate-90" />
+      <Collapsible className="border-t pt-4">
+        <CollapsibleTrigger className="group/example flex cursor-pointer items-center gap-1.5 text-sm font-medium">
+          <ChevronRightIcon className="size-4 text-muted-foreground transition-transform duration-200 ease-out group-data-[panel-open]/example:rotate-90 motion-reduce:transition-none" />
           See an example
-        </summary>
-        <div className="mt-3 flex flex-col gap-2 border-l-2 pl-4">
-          <p className="text-[13px] text-muted-foreground">From an example product: {EXAMPLE_PRODUCT}.</p>
-          {Array.isArray(question.example) ? (
-            <ul className="flex list-disc flex-col gap-1.5 pl-4 text-sm leading-relaxed marker:text-muted-foreground">
-              {question.example.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm leading-relaxed">{question.example}</p>
-          )}
-        </div>
-      </details>
+        </CollapsibleTrigger>
+        <CollapsiblePanel>
+          <div className="mt-3 flex flex-col gap-2 border-l-2 pl-4">
+            <p className="text-[13px] text-muted-foreground">From an example product: {EXAMPLE_PRODUCT}.</p>
+            {Array.isArray(question.example) ? (
+              <ul className="flex list-disc flex-col gap-1.5 pl-4 text-sm leading-relaxed marker:text-muted-foreground">
+                {question.example.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm leading-relaxed">{question.example}</p>
+            )}
+          </div>
+        </CollapsiblePanel>
+      </Collapsible>
     </section>
   );
 }
