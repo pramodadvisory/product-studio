@@ -17,6 +17,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { isSampleProject } from "@/lib/projects";
+import { SAMPLE_SLUG } from "@/lib/publishing/sample";
 import { usePublication, type PublicationController } from "@/lib/publishing/use-publication";
 import { publishedPath } from "@/lib/publishing/types";
 import { cn } from "@/lib/utils";
@@ -57,7 +59,12 @@ export function PublishButton() {
         )}
         <span className={cn(!live && "hidden sm:inline")}>{label}</span>
       </Button>
-      <PublishDialog open={open} onOpenChange={setOpen} publication={publication} />
+      <PublishDialog
+        open={open}
+        onOpenChange={setOpen}
+        publication={publication}
+        isSample={isSampleProject(board.id)}
+      />
     </>
   );
 }
@@ -89,25 +96,55 @@ function PublishDialog({
   open,
   onOpenChange,
   publication,
+  isSample,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   publication: PublicationController;
+  isSample: boolean;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         {/* Remounted on every open, so the note starts empty. */}
-        {open && <PublishPanel publication={publication} onClose={() => onOpenChange(false)} />}
+        {open && <PublishPanel publication={publication} isSample={isSample} onClose={() => onOpenChange(false)} />}
       </DialogContent>
     </Dialog>
   );
 }
 
-function PublishPanel({ publication, onClose }: { publication: PublicationController; onClose: () => void }) {
+function PublishPanel({
+  publication,
+  isSample,
+  onClose,
+}: {
+  publication: PublicationController;
+  isSample: boolean;
+  onClose: () => void;
+}) {
   const { status, available, hasChanges, error } = publication;
   const [note, setNote] = React.useState("");
   const [busy, setBusy] = React.useState<"publish" | "unpublish" | null>(null);
+
+  if (!available && isSample) {
+    return (
+      <>
+        <DialogHeader>
+          <DialogTitle>The sample&apos;s demo link</DialogTitle>
+          <DialogDescription>
+            Publishing needs Supabase, which isn&apos;t set up here. The sample project has a fixed demo link that
+            works anyway. It shows the sample as it ships, not edits made in this browser.
+          </DialogDescription>
+        </DialogHeader>
+        <LinkField slug={SAMPLE_SLUG} />
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Done
+          </Button>
+        </DialogFooter>
+      </>
+    );
+  }
 
   if (!available) {
     return (
@@ -189,32 +226,7 @@ function PublishPanel({ publication, onClose }: { publication: PublicationContro
         </p>
       )}
 
-      {live && status?.slug && (
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="published-link">Link</Label>
-          <div className="flex gap-2">
-            <Input
-              id="published-link"
-              readOnly
-              value={linkFor(status.slug)}
-              onFocus={(e) => e.currentTarget.select()}
-              className="font-mono text-xs"
-            />
-            <Button type="button" variant="outline" size="icon" aria-label="Copy link" onClick={() => void copyLink(status.slug!)}>
-              <CopyIcon />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              aria-label="Open the published project"
-              nativeButton={false}
-              render={<a href={publishedPath(status.slug)} target="_blank" rel="noreferrer" />}
-            >
-              <ExternalLinkIcon />
-            </Button>
-          </div>
-        </div>
-      )}
+      {live && status?.slug && <LinkField slug={status.slug} />}
 
       {!upToDate && (
         <div className="flex flex-col gap-2">
@@ -261,5 +273,35 @@ function PublishPanel({ publication, onClose }: { publication: PublicationContro
         </div>
       </DialogFooter>
     </form>
+  );
+}
+
+/** The published link, with copy and open buttons. */
+function LinkField({ slug }: { slug: string }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Label htmlFor="published-link">Link</Label>
+      <div className="flex gap-2">
+        <Input
+          id="published-link"
+          readOnly
+          value={linkFor(slug)}
+          onFocus={(e) => e.currentTarget.select()}
+          className="font-mono text-xs"
+        />
+        <Button type="button" variant="outline" size="icon" aria-label="Copy link" onClick={() => void copyLink(slug)}>
+          <CopyIcon />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label="Open the published project"
+          nativeButton={false}
+          render={<a href={publishedPath(slug)} target="_blank" rel="noreferrer" />}
+        >
+          <ExternalLinkIcon />
+        </Button>
+      </div>
+    </div>
   );
 }

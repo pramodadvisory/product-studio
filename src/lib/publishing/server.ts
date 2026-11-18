@@ -8,6 +8,7 @@ import { cache } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { migrateBoard } from "@/lib/product-board/migrate";
 import { isBoardCompatible, type Board } from "@/lib/product-board/schema";
+import { SAMPLE_SLUG, samplePublishedProject } from "./sample";
 import type { PublishedProject } from "./types";
 
 /** A copy published by an older version of the app is brought up to date, or dropped. */
@@ -30,6 +31,8 @@ type Row = {
  * page and its metadata share one database call.
  */
 export const getPublishedProject = cache(async (slug: string): Promise<PublishedProject | null> => {
+  if (slug === SAMPLE_SLUG) return samplePublishedProject();
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return null;
