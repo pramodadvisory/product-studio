@@ -29,11 +29,12 @@ import { cn } from "@/lib/utils";
  * publish. The button says which of three states the project is in.
  */
 export function PublishButton() {
-  const { board, flush } = useProjectBoard();
+  const { board, role, flush } = useProjectBoard();
   const publication = usePublication(board);
   const [open, setOpen] = React.useState(false);
 
-  if (!board) return null;
+  // Viewers can't publish; the database refuses it too.
+  if (!board || role === "viewer") return null;
 
   const live = Boolean(publication.status?.liveVersion);
   const label = !live ? "Publish" : publication.hasChanges ? "Publish changes" : "Published";
@@ -153,7 +154,7 @@ function PublishPanel({
           <DialogTitle>Publishing needs Supabase</DialogTitle>
           <DialogDescription>
             This project is saved only in this browser, so there&apos;s nowhere for readers to open it. Add
-            NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local, then run the migrations in
+            NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY to .env.local, then run the migrations in
             supabase/migrations.
           </DialogDescription>
         </DialogHeader>

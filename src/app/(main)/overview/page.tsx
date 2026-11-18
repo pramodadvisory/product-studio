@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { CheckIcon, PencilIcon } from "lucide-react";
+import { CheckIcon, LogOutIcon, PencilIcon, Trash2Icon } from "lucide-react";
 
 import { useHeaderTitle } from "@/components/header-title-context";
 import {
@@ -21,10 +21,13 @@ import {
 } from "@/components/project-data";
 import { CompletionMark } from "@/components/completion-mark";
 import { ProjectDetailsDialog } from "@/components/project-details-dialog";
+import { ProjectExitDialog, type ProjectExit } from "@/components/project-exit-dialog";
 import { StatusPill } from "@/components/status-pill";
 import { Skeleton } from "@/components/ui/skeleton";
 import { STAGES } from "@/lib/navigation";
 import { buildAttentionQueue, type AttentionItem } from "@/lib/overview";
+import { isSupabaseConfigured } from "@/lib/product-board/storage";
+import { isSampleProject } from "@/lib/projects";
 
 /**
  * Overview — where every project opens.
@@ -35,13 +38,14 @@ import { buildAttentionQueue, type AttentionItem } from "@/lib/overview";
  * its progress (for a product) or client sign-off (for an engagement).
  */
 export default function OverviewPage() {
-  const { board, mutate } = useProjectBoard();
+  const { board, mutate, role } = useProjectBoard();
   const { decisions } = useProjectDecisions();
   const { experiments } = useProjectExperiments();
   const project = useProjectProgress();
   // Fixed for the life of the page so server and client agree on "N days ago".
   const [now] = React.useState(() => Date.now());
   const [editingDetails, setEditingDetails] = React.useState(false);
+  const [exit, setExit] = React.useState<ProjectExit | null>(null);
 
   useHeaderTitle("Overview");
 
@@ -65,6 +69,15 @@ export default function OverviewPage() {
 
   const engagement = project.projectType === "engagement";
   const [top, ...rest] = queue;
+  // The owner deletes; anyone else on it leaves. With sign-in off, every
+  // project but the sample is this browser's own, so it can be deleted.
+  const canExit: ProjectExit | null = isSampleProject(board.id)
+    ? null
+    : role === "owner" || (!role && !isSupabaseConfigured())
+      ? "delete"
+      : role
+        ? "leave"
+        : null;
 
   return (
     <PageColumn>
@@ -103,6 +116,14 @@ export default function OverviewPage() {
               { label: "All projects", href: "/projects" },
             ],
           },
+          {
+            items:
+              canExit === "delete"
+                ? [{ label: "Delete project…", icon: Trash2Icon, destructive: true, onSelect: () => setExit("delete") }]
+                : canExit === "leave"
+                  ? [{ label: "Leave project…", icon: LogOutIcon, destructive: true, onSelect: () => setExit("leave") }]
+                  : [],
+          },
         ]}
       />
 
@@ -117,6 +138,13 @@ export default function OverviewPage() {
             draft.description = description;
           })
         }
+      />
+
+      <ProjectExitDialog
+        exit={exit}
+        onOpenChange={(open) => !open && setExit(null)}
+        projectId={board.id}
+        projectName={board.productName}
       />
 
       {top ? <UpNext item={top} /> : <AllClear />}

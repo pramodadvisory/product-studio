@@ -1,5 +1,5 @@
 /**
- * Projects: which one is open, and making new ones.
+ * Projects: which one is open, making new ones, and deleting or leaving one.
  *
  * Each project is one stored board. The open project's id is remembered in
  * this browser, so every page under the main layout reads the same project
@@ -13,7 +13,9 @@ import type { Sprint, StoryMap } from "@/app/(main)/develop/story-map/storymap";
 import { createBlankBoard } from "@/lib/product-board/blank";
 import type { Board, ProjectType } from "@/lib/product-board/schema";
 import { SEED_BOARD } from "@/lib/product-board/seed";
-import { saveBoard } from "@/lib/product-board/storage";
+import { removeCollaborator } from "@/lib/collaborators";
+import { forgetBoard, getSupabaseClient, saveBoard } from "@/lib/product-board/storage";
+import { forgetWork } from "@/lib/project-work/storage";
 
 export const SAMPLE_PROJECT_ID = SEED_BOARD.id;
 
@@ -61,8 +63,8 @@ export type ProjectWork = {
 };
 
 /**
- * Experiments and the story map are held in memory for the session (they
- * aren't persisted yet). The sample starts with its sample work; any other
+ * The experiments, story map and sprints a project starts with before anything
+ * has been saved for it. The sample starts with its sample work; any other
  * project starts with none.
  */
 export function initialProjectWork(projectId: string): ProjectWork {
@@ -94,4 +96,38 @@ export async function createProject({
   await saveBoard(board);
   setCurrentProjectId(board.id);
   return board;
+}
+
+/**
+ * Takes a deleted or left project off this browser: its copies go, nothing
+ * more is saved for it, and if it was open the sample opens instead.
+ */
+function closeProject(projectId: string) {
+  forgetBoard(projectId);
+  forgetWork(projectId);
+  if (getCurrentProjectId() === projectId) setCurrentProjectId(SAMPLE_PROJECT_ID);
+}
+
+/**
+ * Deletes a project for everyone on it: the board, its work, its members and
+ * its published link. Only the owner can; the database checks (see
+ * supabase/migrations/0006). With Supabase off, it only removes this
+ * browser's copy.
+ */
+export async function deleteProject(projectId: string): Promise<void> {
+  if (isSampleProject(projectId)) throw new Error("The sample project can't be deleted.");
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    const { error } = await supabase.rpc("delete_project", { p_board_id: projectId });
+    if (error) {
+      throw new Error(error.code === "42501" ? "Only the project owner can delete it." : error.message);
+    }
+  }
+  closeProject(projectId);
+}
+
+/** Takes the signed-in person off a project they don't own. */
+export async function leaveProject(projectId: string, userId: string): Promise<void> {
+  await removeCollaborator(projectId, userId);
+  closeProject(projectId);
 }

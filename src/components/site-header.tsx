@@ -13,12 +13,13 @@ import { useAssistant } from "@/components/assistant/assistant-provider"
 import { Button } from "@/components/ui/button"
 import { SparklesIcon } from "lucide-react"
 import { PublishButton } from "@/components/publishing/publish-button"
+import { ShareButton } from "@/components/sharing/share-button"
 
 /**
  * Top bar: where you are (project / page) and nothing else competing with the
  * page. Pages put their one primary action in their own PageHeader; the
  * actions slot stays for full-width workspaces such as the doc editor.
- * Publish and the assistant act on the whole project, so they are global
+ * Share, Publish and the assistant act on the whole project, so they are global
  * chrome, not page actions.
  */
 export function SiteHeader() {
@@ -54,6 +55,7 @@ export function SiteHeader() {
           )}
         </nav>
         <div ref={actionsRef} className="ml-auto flex items-center gap-2" />
+        <ShareButton />
         <PublishButton />
         <Button
           variant="outline"

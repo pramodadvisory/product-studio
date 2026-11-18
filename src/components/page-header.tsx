@@ -40,6 +40,8 @@ export type OverflowItem = {
   /** Renders as a checkable item, for view filters. */
   checked?: boolean;
   disabled?: boolean;
+  /** Shown in red, for actions that remove something. */
+  destructive?: boolean;
 };
 
 export type OverflowGroup = {
@@ -156,7 +158,12 @@ function OverflowMenu({ groups }: { groups: OverflowGroup[] }) {
                   );
                 }
                 return (
-                  <DropdownMenuItem key={item.label} onClick={select} disabled={item.disabled}>
+                  <DropdownMenuItem
+                    key={item.label}
+                    onClick={select}
+                    disabled={item.disabled}
+                    variant={item.destructive ? "destructive" : "default"}
+                  >
                     {Icon && <Icon />}
                     {item.label}
                   </DropdownMenuItem>

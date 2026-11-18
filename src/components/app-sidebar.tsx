@@ -42,13 +42,7 @@ import { LIBRARY_ITEMS, OVERVIEW_ITEM, STAGES, isActivePath, pageUrl } from "@/l
 import type { Board } from "@/lib/product-board/schema"
 import { answerProgress } from "@/lib/questions"
 
-const user = {
-  name: "shadcn",
-  email: "m@example.com",
-  avatar: "/avatars/shadcn.jpg",
-}
-
-const ORGANISATION = "KPMG Inc."
+const ROLE_LABEL = { owner: null, editor: "Editor", viewer: "View only" } as const
 
 /**
  * Project navigation: which project you're in, Overview, the five stages in
@@ -58,7 +52,7 @@ const ORGANISATION = "KPMG Inc."
  * only when something is waiting on you.
  */
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { board } = useProjectBoard()
+  const { board, role } = useProjectBoard()
   const { decisions } = useProjectDecisions()
   const project = useProjectProgress()
 
@@ -71,6 +65,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <ProjectSwitcher
           name={board?.productName ?? "Loading project…"}
           type={engagement ? "Client engagement" : "Product"}
+          access={role ? ROLE_LABEL[role] : null}
         />
       </SidebarHeader>
       <SidebarContent>
@@ -79,7 +74,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain label="Library" items={LIBRARY_ITEMS} badges={{ "/decisions": waitingDecisions }} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={user} />
+        <NavUser />
       </SidebarFooter>
     </Sidebar>
   )
@@ -168,7 +163,8 @@ function StageNav({
   )
 }
 
-function ProjectSwitcher({ name, type }: { name: string; type: string }) {
+/** `access` names the signed-in person's role when they aren't the owner. */
+function ProjectSwitcher({ name, type, access }: { name: string; type: string; access: string | null }) {
   const router = useRouter()
   const initials = name
     .split(/\s+/)
@@ -190,7 +186,7 @@ function ProjectSwitcher({ name, type }: { name: string; type: string }) {
             <span className="grid min-w-0 flex-1 text-left leading-tight">
               <span className="truncate text-sm font-semibold">{name}</span>
               <span className="truncate text-xs text-sidebar-foreground/70">
-                {type} · {ORGANISATION}
+                {access ? `${type} · ${access}` : type}
               </span>
             </span>
             <ChevronsUpDownIcon className="ml-auto text-sidebar-foreground/60" />

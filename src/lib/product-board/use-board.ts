@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Backend } from "./storage";
+import type { Backend, ProjectRole } from "./storage";
 import { isSupabaseConfigured, loadBoard, saveBoard } from "./storage";
 import type { Block, Board, Section } from "./schema";
 import { SEED_BOARD } from "./seed";
@@ -15,6 +15,8 @@ export type BoardController = {
   saveState: SaveState;
   backend: Backend;
   warning: string | null;
+  /** The signed-in person's role on this project; null for the sample or when unknown. */
+  role: ProjectRole | null;
   /** Mutate the board immutably; schedules a debounced save. */
   mutate: (recipe: (draft: Board) => void) => void;
   /** Convenience: mutate a single block in place. */
@@ -46,6 +48,7 @@ export function useBoard(boardId: string | null, onMissing?: () => void): BoardC
     isSupabaseConfigured() ? "supabase" : "local"
   );
   const [warning, setWarning] = useState<string | null>(null);
+  const [role, setRole] = useState<ProjectRole | null>(null);
 
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Always holds the newest board so a flush never writes a stale document.
@@ -123,6 +126,7 @@ export function useBoard(boardId: string | null, onMissing?: () => void): BoardC
       setBoard(initial);
       setBackend(result.backend);
       setWarning(result.warning ?? null);
+      setRole(result.role ?? null);
       setSaveState("idle");
 
       // First visit: write the seed so the row exists and later loads are real.
@@ -182,7 +186,7 @@ export function useBoard(boardId: string | null, onMissing?: () => void): BoardC
     [mutate]
   );
 
-  return { board, saveState, backend, warning, mutate, mutateBlock, flush };
+  return { board, saveState, backend, warning, role, mutate, mutateBlock, flush };
 }
 
 /** Helper for section lookups in components. */

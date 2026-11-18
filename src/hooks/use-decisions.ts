@@ -13,56 +13,32 @@ import {
 } from "@/app/(main)/decisions/decisions"
 
 import { isSampleProject } from "@/lib/projects"
+import { useProjectDoc } from "@/lib/project-work/use-project-doc"
 
-/** The sample project keeps the original key so its saved log carries over. */
-function storageKey(projectId: string) {
+const NO_DECISIONS: Decision[] = []
+
+/** Only the sample project comes with sample decisions; a new project starts empty. */
+function seedDecisions(projectId: string): Decision[] {
+  return isSampleProject(projectId) ? SEED_DECISIONS : NO_DECISIONS
+}
+
+/** Where earlier versions kept the log in this browser, so it carries over. */
+function legacyKey(projectId: string) {
   return isSampleProject(projectId) ? "decisions" : `decisions:${projectId}`
 }
 
-function load(projectId: string): Decision[] {
-  // Only the sample project comes with sample decisions; a new project starts empty.
-  const seed = isSampleProject(projectId) ? SEED_DECISIONS : []
-  try {
-    const raw = window.localStorage.getItem(storageKey(projectId))
-    // Nothing stored yet means a first visit, not an emptied log — seed it.
-    if (!raw) return seed
-    return (JSON.parse(raw) as Decision[]).sort(byDateDesc)
-  } catch {
-    return seed
-  }
-}
-
-/** The decision log for one project. `projectId` is null until the open project is known. */
+/**
+ * The decision log for one project, saved to Supabase (and this browser).
+ * `projectId` is null until the open project is known.
+ */
 export function useDecisions(projectId: string | null) {
-  // The log starts over from storage whenever the project changes. Null means
-  // the project isn't known yet (server render, hydration).
-  const [log, setLog] = React.useState<{ projectId: string | null; decisions: Decision[] }>({
-    projectId: null,
-    decisions: [],
+  const { value: decisions, setValue: setDecisions, hydrated } = useProjectDoc<Decision[]>({
+    projectId,
+    kind: "decisions",
+    seed: seedDecisions,
+    empty: NO_DECISIONS,
+    legacyLocalKey: legacyKey,
   })
-  if (log.projectId !== projectId) {
-    setLog({ projectId, decisions: projectId ? load(projectId) : [] })
-  }
-  const decisions = log.decisions
-  const hydrated = projectId !== null && log.projectId === projectId
-
-  const setDecisions = React.useCallback(
-    (action: React.SetStateAction<Decision[]>) =>
-      setLog((prev) => ({
-        ...prev,
-        decisions: typeof action === "function" ? action(prev.decisions) : action,
-      })),
-    []
-  )
-
-  React.useEffect(() => {
-    if (!hydrated || !projectId) return
-    try {
-      window.localStorage.setItem(storageKey(projectId), JSON.stringify(decisions))
-    } catch {
-      // ignore write failures (e.g. private mode)
-    }
-  }, [decisions, hydrated, projectId])
 
   /** Accepts a drafted record onto the timeline. */
   const saveDecision = React.useCallback((draft: DecisionDraft) => {
